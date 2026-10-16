@@ -13,12 +13,12 @@ function FullPageLoading() {
 }
 
 /** Requires a signed-in user; otherwise sends them to sign in and back. */
-export function RequireAuth({ children }: { children?: ReactNode }) {
+export function RequireAuth({ children, signInPath = '/sign-in' }: { children?: ReactNode; signInPath?: string }) {
   const { status } = useAuth();
   const location = useLocation();
   if (status === 'loading') return <FullPageLoading />;
   if (status === 'signed_out') {
-    return <Navigate to={`/sign-in?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+    return <Navigate to={`${signInPath}?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
   return children ?? <Outlet />;
 }

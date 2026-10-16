@@ -42,7 +42,7 @@ const MAIN_NAV: NavItem[] = [
   { to: '/admin/applications', label: 'Applications', icon: ClipboardList, roles: ['admin', 'support'], count: 'applications_waiting' },
   { to: '/admin/merchants', label: 'Merchants', icon: Store, roles: STAFF },
   { to: '/admin/orders', label: 'Orders', icon: Receipt, roles: STAFF, count: 'orders_waiting_for_rider' },
-  { to: '/admin/riders', label: 'Riders', icon: Bike, roles: STAFF },
+  { to: '/admin/riders', label: 'Riders', icon: Bike, roles: STAFF, count: 'riders_pending' },
   { to: '/admin/payments', label: 'Refunds', icon: CreditCard, roles: ['admin', 'finance'], count: 'refunds_waiting' },
   { to: '/admin/support', label: 'Support', icon: LifeBuoy, roles: ['admin', 'support'], count: 'open_tickets' },
 ];

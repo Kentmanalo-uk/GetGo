@@ -11,8 +11,10 @@ import { ConfirmDialog, Sheet } from '@/components/ui/Sheet';
 import { useToast } from '@/components/ui/Toast';
 import {
   VEHICLE_LABELS,
+  useAdminOverview,
   useAllServiceAreas,
   useCreateRider,
+  useRejectRider,
   usePermissions,
   useRiderLoad,
   useRiders,
@@ -24,6 +26,7 @@ import {
 import { DataTable, ListSkeleton, LoadMore, RoleNote } from './ui';
 
 const TABS: Array<{ value: RiderStatus | 'all'; label: string }> = [
+  { value: 'pending', label: 'Applications' },
   { value: 'active', label: 'Active' },
   { value: 'suspended', label: 'Suspended' },
   { value: 'all', label: 'All' },
@@ -154,12 +157,28 @@ export default function RidersPage() {
   const list = useRiders(tab);
   const load = useRiderLoad();
   const setStatus = useSetRiderStatus();
+  const reject = useRejectRider();
+  const overview = useAdminOverview();
   const toast = useToast();
   const [editing, setEditing] = useState<RiderRow | 'new' | null>(null);
   const [toggling, setToggling] = useState<RiderRow | null>(null);
+  const [rejecting, setRejecting] = useState<RiderRow | null>(null);
 
   const actions = (r: RiderRow) =>
-    perms.canConfigure ? (
+    !perms.canConfigure ? null : r.status === 'pending' ? (
+      <span className="flex justify-end gap-1">
+        <Button
+          size="sm"
+          loading={setStatus.isPending && setStatus.variables?.userId === r.user_id}
+          onClick={() => setStatus.mutateAsync({ userId: r.user_id, status: 'active' }).then(() => toast(`${r.full_name} approved`), () => undefined)}
+        >
+          Approve
+        </Button>
+        <Button size="sm" variant="danger-quiet" onClick={() => setRejecting(r)}>
+          Reject
+        </Button>
+      </span>
+    ) : (
       <span className="flex justify-end gap-1">
         <Button size="sm" variant="ghost" onClick={() => setEditing(r)}>
           Edit
@@ -168,7 +187,13 @@ export default function RidersPage() {
           {r.status === 'active' ? 'Suspend' : 'Reactivate'}
         </Button>
       </span>
-    ) : null;
+    );
+
+  const statusLabel = (r: RiderRow) => (
+    <StatusText tone={r.status === 'active' ? 'done' : r.status === 'pending' ? 'attention' : 'danger'}>
+      {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Waiting for approval' : 'Suspended'}
+    </StatusText>
+  );
 
   return (
     <div>
@@ -181,14 +206,26 @@ export default function RidersPage() {
         }
       />
       {!perms.canConfigure && <RoleNote className="-mt-2 mb-4">Only administrators can add, edit or suspend riders.</RoleNote>}
-      <Tabs label="Rider status" value={tab} onChange={setTab} items={TABS} className="mb-4" />
+      <Tabs
+        label="Rider status"
+        value={tab}
+        onChange={setTab}
+        items={TABS.map((t) => (t.value === 'pending' ? { ...t, count: overview.data?.riders_pending } : t))}
+        className="mb-4"
+      />
+      {setStatus.error && <FormError error={setStatus.error} />}
       {list.query.isPending ? (
         <ListSkeleton />
       ) : list.query.isError ? (
         <ErrorState error={list.query.error} onRetry={() => list.query.refetch()} />
       ) : list.items.length === 0 ? (
-        <EmptyState title={tab === 'suspended' ? 'No suspended riders' : 'No riders yet'} icon={<Bike className="size-8" />}>
-          {tab !== 'suspended' && 'Riders sign up for a GETGO account, then an administrator adds them here with their vehicle and area.'}
+        <EmptyState
+          title={tab === 'pending' ? 'No rider applications waiting' : tab === 'suspended' ? 'No suspended riders' : 'No riders yet'}
+          icon={<Bike className="size-8" />}
+        >
+          {tab === 'pending'
+            ? 'People who sign up at /rider/sign-up appear here for approval.'
+            : tab !== 'suspended' && 'Riders sign up at /rider/sign-up and you approve them here, or you can add a rider directly.'}
         </EmptyState>
       ) : (
         <>
@@ -217,7 +254,7 @@ export default function RidersPage() {
                   </span>
                 ),
               },
-              { header: 'Status', cell: (r) => <StatusText tone={r.status === 'active' ? 'done' : 'danger'}>{r.status === 'active' ? 'Active' : 'Suspended'}</StatusText> },
+              { header: 'Status', cell: statusLabel },
               { header: 'On delivery', align: 'right', cell: (r) => load.data?.[r.user_id] ?? 0 },
               { header: <span className="sr-only">Actions</span>, align: 'right', cell: actions },
             ]}
@@ -238,9 +275,7 @@ export default function RidersPage() {
                       GCash {r.gcash_number} · {r.gcash_name}
                     </p>
                   </div>
-                  <StatusText tone={r.status === 'active' ? 'done' : 'danger'} className="shrink-0">
-                    {r.status === 'active' ? 'Active' : 'Suspended'}
-                  </StatusText>
+                  <span className="shrink-0">{statusLabel(r)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-small text-ink-3">
@@ -283,6 +318,25 @@ export default function RidersPage() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(rejecting)}
+        onClose={() => {
+          setRejecting(null);
+          reject.reset();
+        }}
+        title={`Reject ${rejecting?.full_name ?? 'this application'}?`}
+        body="They’re notified with your reason and can apply again."
+        confirmLabel="Reject application"
+        reason={{ label: 'Reason', required: true, suggestions: ['GCash name doesn’t match', 'Area not open for riders yet', 'Incomplete details'] }}
+        loading={reject.isPending}
+        error={reject.error ? <FormError error={reject.error} /> : null}
+        onConfirm={async (reason) => {
+          await reject.mutateAsync({ userId: rejecting!.user_id, reason });
+          toast('Application rejected');
+          setRejecting(null);
+        }}
+      />
     </div>
   );
 }

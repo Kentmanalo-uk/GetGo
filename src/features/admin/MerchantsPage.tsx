@@ -1,10 +1,13 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Store } from 'lucide-react';
+import { Plus, Store } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Sheet } from '@/components/ui/Sheet';
 import { EmptyState, ErrorState } from '@/components/ui/Feedback';
 import { PageHeader, StatusText, StoreMark, Tabs, formatDate } from '@/components/ui/Display';
 import { CATEGORY_LABELS } from '@/types/models';
-import { useMerchants, type MerchantTab } from './api';
+import { useMerchants, usePermissions, type MerchantTab } from './api';
+import { CreateStoreForm } from './CreateStoreForm';
 import { DataTable, ListSkeleton, LoadMore, MERCHANT_STATUS_LABELS, SearchBox, merchantTone } from './ui';
 
 const TABS: Array<{ value: MerchantTab; label: string }> = [
@@ -19,6 +22,8 @@ export default function MerchantsPage() {
   const tab = (TABS.some((t) => t.value === params.get('status')) ? params.get('status') : 'all') as MerchantTab;
   const search = params.get('q') ?? '';
   const list = useMerchants(tab, search);
+  const perms = usePermissions();
+  const [creating, setCreating] = useState(false);
 
   const update = useCallback(
     (key: string, value: string) =>
@@ -37,7 +42,17 @@ export default function MerchantsPage() {
 
   return (
     <div>
-      <PageHeader title="Merchants" />
+      <PageHeader
+        title="Merchants"
+        actions={
+          <Button size="sm" icon={<Plus className="size-4" aria-hidden />} disabled={!perms.canConfigure} onClick={() => setCreating(true)}>
+            Create store
+          </Button>
+        }
+      />
+      <Sheet open={creating} onClose={() => setCreating(false)} title="Create a store" size="lg">
+        {creating && <CreateStoreForm onCancel={() => setCreating(false)} />}
+      </Sheet>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <Tabs label="Merchant status" value={tab} onChange={(v) => update('status', v)} items={TABS} className="sm:flex-1" />
         <SearchBox value={search} onChange={onSearch} placeholder="Search name or slug" label="Search merchants" className="sm:mb-1.5" />
@@ -49,7 +64,7 @@ export default function MerchantsPage() {
           <ErrorState error={list.query.error} onRetry={() => list.query.refetch()} />
         ) : list.items.length === 0 ? (
           <EmptyState title={search ? 'No merchants match your search' : 'No merchants here'} icon={<Store className="size-8" />}>
-            {search ? 'Try part of the store name or its link slug.' : 'Approved partner applications appear here as merchants.'}
+            {search ? 'Try part of the store name or its link slug.' : 'Approved partner applications and stores you create appear here.'}
           </EmptyState>
         ) : (
           <>

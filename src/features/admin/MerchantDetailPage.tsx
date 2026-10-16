@@ -91,6 +91,13 @@ export default function MerchantDetailPage() {
     <div>
       <PageHeader
         back="/admin/merchants"
+        actions={
+          perms.canConfigure && (
+            <ButtonLink to={`/admin/merchants/${m.id}/manage`} size="sm">
+              Manage products and store
+            </ButtonLink>
+          )
+        }
         title={
           <span className="flex items-center gap-3">
             <StoreMark name={m.name} logoPath={m.logo_path} size="sm" />
@@ -110,6 +117,12 @@ export default function MerchantDetailPage() {
           )}
         </span>
       </PageHeader>
+
+      {m.pending_owner_email && (
+        <Notice className="mb-6" title="Owner hasn’t signed up yet">
+          This store is linked to <strong>{m.pending_owner_email}</strong>. It becomes theirs as soon as they create a GETGO account with that email.
+        </Notice>
+      )}
 
       <div className="space-y-10 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12 lg:space-y-0">
         <div className="min-w-0 space-y-10">

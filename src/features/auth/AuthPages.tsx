@@ -11,28 +11,45 @@ import { Notice } from '@/components/ui/Feedback';
 import { Logo } from '@/components/Logo';
 import { useAuth } from './AuthProvider';
 
-function safeNext(value: string | null) {
+export function safeNext(value: string | null) {
   return value && value.startsWith('/') && !value.startsWith('//') ? value : '/';
 }
 
-function AuthLayout({ title, children, footer }: { title: string; children: React.ReactNode; footer?: React.ReactNode }) {
+export function AuthLayout({
+  title,
+  children,
+  footer,
+  suffix,
+  headline = 'Local food and essentials, delivered.',
+  blurb = 'One account for ordering, running your store on GETGO, and tracking every order.',
+  wide,
+}: {
+  title: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  /** Logo suffix, e.g. "Rider". */
+  suffix?: string;
+  headline?: string;
+  blurb?: string;
+  wide?: boolean;
+}) {
   return (
     <div className="safe-top flex min-h-dvh flex-col bg-surface lg:flex-row">
       <aside className="hidden flex-col justify-between bg-ink p-10 text-white lg:flex lg:w-[42%]">
-        <Logo inverted />
+        <Logo inverted suffix={suffix} />
         <div className="max-w-sm space-y-3">
-          <p className="text-display font-bold">Local food and essentials, delivered.</p>
-          <p className="text-white/70">One account for ordering, running your store on GETGO, and tracking every order.</p>
+          <p className="text-display font-bold">{headline}</p>
+          <p className="text-white/70">{blurb}</p>
         </div>
         <span />
       </aside>
       <main className="flex flex-1 flex-col px-5 py-6 sm:items-center sm:justify-center">
         <div className="mb-10 lg:hidden">
           <Link to="/" aria-label="GETGO home">
-            <Logo />
+            <Logo suffix={suffix} />
           </Link>
         </div>
-        <div className="w-full sm:max-w-sm">
+        <div className={wide ? 'w-full sm:max-w-lg' : 'w-full sm:max-w-sm'}>
           <h1 className="mb-6 text-title font-bold">{title}</h1>
           {children}
           {footer && <div className="mt-8 text-ink-3">{footer}</div>}

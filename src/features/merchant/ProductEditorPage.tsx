@@ -106,7 +106,7 @@ export default function ProductEditorPage() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { merchantId, canManage } = useMerchantContext();
+  const { merchantId, canManage, basePath } = useMerchantContext();
   const catalog = useMerchantCatalog(merchantId);
   const save = useSaveProduct(merchantId);
   const setStatus = useSetProductStatus(merchantId);
@@ -146,10 +146,10 @@ export default function ProductEditorPage() {
     };
   }, [draft, groups, existing, merchantId]);
 
-  if (!canManage) return <EmptyState title="Only owners and managers can edit the menu" action={<Link to="/merchant" className="font-semibold underline">Back to menu</Link>} />;
+  if (!canManage) return <EmptyState title="Only owners and managers can edit the menu" action={<Link to={basePath} className="font-semibold underline">Back to products</Link>} />;
   if (catalog.isPending || !draft) return <PageLoading />;
   if (catalog.isError) return <ErrorState error={catalog.error} onRetry={() => catalog.refetch()} />;
-  if (productId && !existing) return <EmptyState title="Item not found" action={<Link to="/merchant" className="font-semibold underline">Back to menu</Link>} />;
+  if (productId && !existing) return <EmptyState title="Item not found" action={<Link to={basePath} className="font-semibold underline">Back to products</Link>} />;
 
   const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
   const setVariant = (i: number, patch: Partial<VariantDraft>) => set({ variants: draft.variants.map((v, j) => (j === i ? { ...v, ...patch } : v)) });
@@ -166,7 +166,7 @@ export default function ProductEditorPage() {
     try {
       const id = await save.mutateAsync({ ...v.input, id: existing?.id, status });
       toast(status === 'published' ? 'Saved — visible to customers' : 'Saved as draft');
-      if (!existing) navigate(`/merchant/menu/${id}`, { replace: true });
+      if (!existing) navigate(`${basePath}/menu/${id}`, { replace: true });
       setDraft(null); // reload from server
     } catch {
       /* shown below */
@@ -179,7 +179,7 @@ export default function ProductEditorPage() {
     <div className="pb-28 sm:pb-10">
       <PageHeader
         title={existing ? existing.name : 'New item'}
-        back="/merchant"
+        back={basePath}
         actions={
           <Button variant="secondary" size="sm" icon={<Eye className="size-4" aria-hidden />} onClick={() => setPreviewing(true)}>
             Preview
@@ -270,7 +270,7 @@ export default function ProductEditorPage() {
               <h2 id="options-heading" className="font-semibold">
                 Choices (sizes of rice, drinks, add-ons)
               </h2>
-              <Link to="/merchant/options" className="text-small font-semibold underline underline-offset-4">
+              <Link to={`${basePath}/options`} className="text-small font-semibold underline underline-offset-4">
                 Manage choices
               </Link>
             </div>
@@ -373,7 +373,7 @@ export default function ProductEditorPage() {
         onConfirm={async () => {
           await setStatus.mutateAsync({ productId: existing!.id, status: 'archived' });
           setArchiving(false);
-          navigate('/merchant');
+          navigate(basePath);
         }}
       />
     </div>

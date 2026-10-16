@@ -79,6 +79,8 @@ describe.skipIf(!run)('live Supabase connections', () => {
   let addressId: string;
   let orderId: string;
   const uploaded: Array<{ bucket: string; path: string }> = [];
+  const extraUsers: string[] = [];
+  const extraMerchants: string[] = [];
 
   beforeAll(async () => {
     [a, owner, customer, rider, stranger] = await Promise.all([
@@ -98,8 +100,9 @@ describe.skipIf(!run)('live Supabase connections', () => {
     await admin.from('orders').delete().in('customer_id', ids);
     await admin.from('promotions').delete().like('code', `${tag.toUpperCase()}%`);
     if (merchantId) await admin.from('merchants').delete().eq('id', merchantId);
+    if (extraMerchants.length) await admin.from('merchants').delete().in('id', extraMerchants);
     await admin.from('support_tickets').delete().in('user_id', ids);
-    for (const id of ids) await admin.auth.admin.deleteUser(id);
+    for (const id of [...ids, ...extraUsers]) await admin.auth.admin.deleteUser(id);
     if (areaId) await admin.from('service_areas').delete().eq('id', areaId);
   });
 
@@ -472,5 +475,81 @@ describe.skipIf(!run)('live Supabase connections', () => {
     expect(order.payment_status).toBe('refunded');
     const audit = ok(await a.db.from('audit_logs').select('action').in('entity_id', [second, refund.id]), 'audit') as Array<{ action: string }>;
     expect(audit.map((x) => x.action)).toEqual(expect.arrayContaining(['order.rider_assigned', 'refund.mark_processed']));
+  });
+
+  test('rider signs up with their details and is approved by an admin', async () => {
+    const email = `${tag}-newrider@getgo.test`;
+    const created = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: 'E2E New Rider',
+        phone: '09170000006',
+        rider_application: { vehicle: 'bicycle', plate: '', service_area_id: areaId, gcash_name: 'E2E N.', gcash_number: '0917 000 0006' },
+      },
+    });
+    if (created.error) throw created.error;
+    extraUsers.push(created.data.user.id);
+    const db = createClient(URL_, ANON, opts);
+    expect((await db.auth.signInWithPassword({ email, password })).error).toBeNull();
+
+    const pending = ok(await db.from('rider_profiles').select('status, gcash_number').eq('user_id', created.data.user.id).single(), 'own application') as {
+      status: string;
+      gcash_number: string;
+    };
+    expect(pending).toEqual({ status: 'pending', gcash_number: '09170000006' });
+    expect(ok(await db.from('orders').select('id').eq('status', 'pending'), 'pending rider sees no orders')).toEqual([]);
+
+    ok(await a.db.rpc('set_rider_status', { p_user_id: created.data.user.id, p_status: 'active' }), 'approve rider');
+    const roles = ok(await db.from('user_roles').select('role').eq('user_id', created.data.user.id), 'rider roles');
+    expect(roles).toEqual([{ role: 'rider' }]);
+  });
+
+  test('admin creates a store for a new email; it is claimed at sign-up and admin manages it', async () => {
+    const ownerEmail = `${tag}-newowner@getgo.test`;
+    const result = ok(
+      await a.db.rpc('admin_create_store', {
+        p_owner_email: ownerEmail,
+        p_store: {
+          name: `E2E Admin Store ${tag}`,
+          category: 'grocery',
+          address_line: '4 Test Rd',
+          barangay: 'Centro',
+          city: 'Naga City',
+          service_area_id: areaId,
+          hours: [1, 2, 3, 4, 5].map((weekday) => ({ weekday, opens: '08:00', closes: '20:00' })),
+        },
+      }),
+      'admin create store',
+    ) as { merchant_id: string; owner_linked: boolean };
+    extraMerchants.push(result.merchant_id);
+    expect(result.owner_linked).toBe(false);
+    expect((await customer.db.rpc('admin_create_store', { p_owner_email: 'x@getgo.test', p_store: {} })).error?.code).toBe('42501');
+
+    // Admin manages the catalog and details through the same API the store uses.
+    const productId = ok(
+      await a.db.rpc('save_product', { p_merchant_id: result.merchant_id, p_product: { name: 'E2E Rice 1kg', base_price_minor: 6500, status: 'published' } }),
+      'admin save product',
+    ) as string;
+    ok(await a.db.rpc('set_product_availability', { p_product_id: productId, p_available: false }), 'admin availability');
+    ok(await a.db.from('merchants').update({ description: 'Managed by admin' }).eq('id', result.merchant_id), 'admin edits store');
+    const photo = `merchants/${result.merchant_id}/products/${randomUUID()}.png`;
+    ok(await a.db.storage.from('media').upload(photo, png, { contentType: 'image/png' }), 'admin uploads photo');
+    uploaded.push({ bucket: 'media', path: photo });
+
+    // The owner signs up with that email and gets the store.
+    const signup = createClient(URL_, ANON, opts);
+    const created = await admin.auth.admin.createUser({ email: ownerEmail, password, email_confirm: true, user_metadata: { full_name: 'E2E New Owner' } });
+    if (created.error) throw created.error;
+    extraUsers.push(created.data.user.id);
+    expect((await signup.auth.signInWithPassword({ email: ownerEmail, password })).error).toBeNull();
+    const memberships = ok(
+      await signup.from('merchant_members').select('merchant_id, role, merchant:merchants(id, name, slug, status, is_published, category, logo_path)').eq('user_id', created.data.user.id),
+      'owner memberships',
+    ) as Array<{ merchant_id: string; role: string }>;
+    expect(memberships).toEqual([expect.objectContaining({ merchant_id: result.merchant_id, role: 'owner' })]);
+    const products = ok(await signup.from('products').select('name, is_available').eq('merchant_id', result.merchant_id), 'owner sees admin edits');
+    expect(products).toEqual([{ name: 'E2E Rice 1kg', is_available: false }]);
   });
 });

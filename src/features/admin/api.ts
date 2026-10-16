@@ -88,6 +88,8 @@ export interface AdminMerchant {
   paused_until?: string | null;
   min_order_minor?: number;
   application_id: string | null;
+  /** Owner email for an admin-created store whose owner hasn't signed up yet. */
+  pending_owner_email?: string | null;
   created_at: string;
 }
 
@@ -247,6 +249,7 @@ export interface AdminOverview {
   active_merchants: number;
   open_tickets: number;
   refunds_waiting: number;
+  riders_pending: number;
 }
 
 export function useAdminOverview() {
@@ -510,6 +513,35 @@ export function useMerchantRecentOrders(merchantId: string | undefined) {
   });
 }
 
+export interface CreateStoreInput {
+  ownerEmail: string;
+  store: {
+    name: string;
+    category: MerchantCategory;
+    description: string;
+    phone: string;
+    address_line: string;
+    barangay: string;
+    city: string;
+    service_area_id: string;
+    hours: Array<{ weekday: number; opens: string; closes: string }>;
+  };
+}
+
+/** Creates a store for an owner email (linked now, or when that email signs up). */
+export function useCreateStore() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (input: CreateStoreInput) =>
+      unwrap(await supabase.rpc('admin_create_store', { p_owner_email: input.ownerEmail, p_store: input.store })) as {
+        merchant_id: string;
+        owner_linked: boolean;
+        slug: string;
+      },
+    onSuccess: () => invalidate(['admin', 'merchants'], ['admin', 'overview']),
+  });
+}
+
 export function useSetMerchantStatus() {
   const invalidate = useInvalidate();
   return useMutation({
@@ -667,7 +699,7 @@ export function useRequestRefund() {
 // Riders
 // ---------------------------------------------------------------------------
 export type VehicleType = 'motorcycle' | 'bicycle' | 'car';
-export type RiderStatus = 'active' | 'suspended';
+export type RiderStatus = 'pending' | 'active' | 'suspended';
 
 export const VEHICLE_LABELS: Record<VehicleType, string> = { motorcycle: 'Motorcycle', bicycle: 'Bicycle', car: 'Car' };
 
@@ -758,9 +790,18 @@ export function useCreateRider() {
 export function useSetRiderStatus() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async (input: { userId: string; status: RiderStatus }) =>
+    mutationFn: async (input: { userId: string; status: Exclude<RiderStatus, 'pending'> }) =>
       unwrap(await supabase.rpc('set_rider_status', { p_user_id: input.userId, p_status: input.status })),
     onSuccess: () => invalidate(['admin', 'riders'], ['admin', 'orders'], ['admin', 'overview']),
+  });
+}
+
+export function useRejectRider() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (input: { userId: string; reason: string }) =>
+      unwrap(await supabase.rpc('reject_rider_application', { p_user_id: input.userId, p_reason: input.reason })),
+    onSuccess: () => invalidate(['admin', 'riders'], ['admin', 'overview']),
   });
 }
 

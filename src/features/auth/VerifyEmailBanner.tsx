@@ -82,23 +82,14 @@ export function VerifyEmailBanner() {
     <Notice
       tone="warning"
       className="mb-6"
-      title={sentTo ? 'Check your email' : 'Verify your email'}
+      title={sentTo ? 'Link sent — check your email' : 'Verify your email'}
       action={
         <Button size="sm" variant="dark" loading={sending} disabled={cooldown > 0} icon={<MailCheck className="size-4" aria-hidden />} onClick={() => void send()}>
-          {cooldown > 0 ? `Resend in ${cooldown}s` : sentTo ? 'Resend link' : 'Send link'}
+          {cooldown > 0 ? `${cooldown}s` : sentTo ? 'Resend' : 'Verify'}
         </Button>
       }
     >
-      {sentTo ? (
-        <>
-          We sent a link to <strong>{sentTo}</strong>. Open it on this device to finish verifying.
-        </>
-      ) : (
-        <>
-          Confirm <strong>{profile.email}</strong> so we can send order updates and help you recover your account.
-        </>
-      )}
-      {error && <span className="mt-1 block font-semibold text-danger">{error}</span>}
+      {error && <span className="font-semibold text-danger">{error}</span>}
     </Notice>
   );
 }

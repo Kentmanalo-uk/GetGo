@@ -165,7 +165,7 @@ function PublishBanner() {
 }
 
 export default function MerchantMenuPage() {
-  const { merchantId, canManage } = useMerchantContext();
+  const { merchantId, canManage, basePath } = useMerchantContext();
   const catalog = useMerchantCatalog(merchantId);
   const [params, setParams] = useSearchParams();
   const filter = (params.get('filter') as Filter) || 'all';
@@ -208,7 +208,7 @@ export default function MerchantMenuPage() {
               <Button variant="secondary" size="sm" onClick={() => setSectionsOpen(true)}>
                 Sections
               </Button>
-              <ButtonLink to="/merchant/menu/new" size="sm" className="hidden sm:inline-flex">
+              <ButtonLink to={`${basePath}/menu/new`} size="sm" className="hidden sm:inline-flex">
                 <Plus className="size-4" aria-hidden /> Add item
               </ButtonLink>
             </>
@@ -242,7 +242,7 @@ export default function MerchantMenuPage() {
       {sections.length === 0 ? (
         <EmptyState
           title={catalog.data.products.length === 0 ? 'Your menu is empty' : 'No items match'}
-          action={canManage && catalog.data.products.length === 0 ? <ButtonLink to="/merchant/menu/new">Add your first item</ButtonLink> : undefined}
+          action={canManage && catalog.data.products.length === 0 ? <ButtonLink to={`${basePath}/menu/new`}>Add your first item</ButtonLink> : undefined}
         />
       ) : (
         sections.map((s) => (
@@ -256,7 +256,7 @@ export default function MerchantMenuPage() {
                   <MediaImage path={p.image_path} alt="" className="size-14 shrink-0 rounded-media" />
                   <div className="min-w-0 flex-1">
                     {canManage ? (
-                      <Link to={`/merchant/menu/${p.id}`} className="font-semibold hover:underline">
+                      <Link to={`${basePath}/menu/${p.id}`} className="font-semibold hover:underline">
                         {p.name}
                       </Link>
                     ) : (
@@ -280,7 +280,7 @@ export default function MerchantMenuPage() {
       )}
 
       {canManage && (
-        <ButtonLink to="/merchant/menu/new" size="lg" className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 shadow-pop sm:hidden">
+        <ButtonLink to={`${basePath}/menu/new`} size="lg" className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 shadow-pop sm:hidden">
           <Plus className="size-5" aria-hidden /> Add item
         </ButtonLink>
       )}

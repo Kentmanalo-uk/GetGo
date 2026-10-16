@@ -148,7 +148,11 @@ export function AccountPage() {
         ) : (
           <MenuLink to="/partner" icon={Store} label="Partner with GETGO" detail="Apply to sell on GETGO" />
         )}
-        {auth.hasRole('rider') && <MenuLink to="/rider" icon={Bike} label="Rider deliveries" />}
+        {auth.hasRole('rider') ? (
+          <MenuLink to="/rider" icon={Bike} label="Rider deliveries" />
+        ) : (
+          <MenuLink to="/rider" icon={Bike} label="Deliver with GETGO" detail="Apply or check your rider application" />
+        )}
         {auth.isStaff && <MenuLink to="/admin" icon={Shield} label="GETGO Admin" />}
       </ul>
 

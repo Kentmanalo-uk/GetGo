@@ -100,8 +100,15 @@ export const router = createBrowserRouter([
       },
       {
         path: 'rider',
-        element: <RequireRole roles={['rider']} />,
-        children: [{ index: true, lazy: lazy(() => import('@/features/rider/RiderPage')) }],
+        children: [
+          { path: 'sign-in', lazy: lazyNamed(() => import('@/features/rider/RiderAuthPages'), 'RiderSignInPage') },
+          { path: 'sign-up', lazy: lazyNamed(() => import('@/features/rider/RiderAuthPages'), 'RiderSignUpPage') },
+          {
+            // Pending and new applicants see their application status here.
+            element: <RequireAuth signInPath="/rider/sign-in" />,
+            children: [{ index: true, lazy: lazy(() => import('@/features/rider/RiderPage')) }],
+          },
+        ],
       },
       {
         path: 'admin',
@@ -115,6 +122,17 @@ export const router = createBrowserRouter([
               { path: 'applications/:applicationId', lazy: lazy(() => import('@/features/admin/ApplicationReviewPage')) },
               { path: 'merchants', lazy: lazy(() => import('@/features/admin/MerchantsPage')) },
               { path: 'merchants/:merchantId', lazy: lazy(() => import('@/features/admin/MerchantDetailPage')) },
+              {
+                path: 'merchants/:merchantId/manage',
+                lazy: async () => ({ Component: (await import('@/features/admin/AdminStoreManager')).AdminStoreManager }),
+                children: [
+                  { index: true, lazy: lazy(() => import('@/features/merchant/MenuPage')) },
+                  { path: 'menu/new', lazy: lazy(() => import('@/features/merchant/ProductEditorPage')) },
+                  { path: 'menu/:productId', lazy: lazy(() => import('@/features/merchant/ProductEditorPage')) },
+                  { path: 'options', lazy: lazy(() => import('@/features/merchant/OptionGroupsPage')) },
+                  { path: 'store', lazy: lazy(() => import('@/features/merchant/StoreSettingsPage')) },
+                ],
+              },
               { path: 'orders', lazy: lazy(() => import('@/features/admin/OrdersPage')) },
               { path: 'orders/:orderId', lazy: lazy(() => import('@/features/admin/OrderDetailPage')) },
               { path: 'riders', lazy: lazy(() => import('@/features/admin/RidersPage')) },

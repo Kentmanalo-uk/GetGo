@@ -12,7 +12,7 @@ Customer orders ─▶ Rider accepts ─▶ Customer sends GCash to rider + ente
 | Customer app | Anyone | `/` |
 | Partner page and application | Store owners | `/partner`, `/partner/apply` |
 | Product list | Approved stores | `/merchant` |
-| Rider app | Riders | `/rider` |
+| Rider app | Riders | `/rider`, `/rider/sign-in`, `/rider/sign-up` |
 | Admin | Admin, support, finance staff | `/admin` |
 
 Stack: React 19 + Vite + TypeScript, Tailwind CSS v4, TanStack Query, React Router, React Hook Form + Zod, Supabase (Auth, Postgres + RLS, Storage, Realtime).
@@ -70,8 +70,11 @@ select id, 'admin' from auth.users where email = 'you@example.com';
 
 Then from `/admin`:
 1. Create at least one **service area** (Areas & fees) and mark it active, with delivery and service fees.
-2. Add **riders** (Riders). Each rider signs up in the app first; then you add their vehicle, area and GCash name/number.
-3. Review **partner applications** as stores apply.
+2. **Riders** sign up at `/rider/sign-up` with their vehicle, area and GCash account and appear under Riders → Applications for you to approve or reject. You can also add a rider directly for an existing account.
+3. **Stores** either apply at `/partner/apply` (Applications), or you create them under Merchants → Create store with the owner's email.
+   - If that email already has an account, it owns the store immediately.
+   - If not, the store is linked when they sign up with that email; they choose their own password.
+   - "Manage products and store" on any store opens its Products, Choices and Store screens for admins.
 
 ### Supabase Auth settings
 

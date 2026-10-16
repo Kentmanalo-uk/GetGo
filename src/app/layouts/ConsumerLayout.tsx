@@ -203,6 +203,12 @@ export function SiteFooter() {
           <Link to="/merchant" className="block text-ink-2 hover:text-ink">
             Partner login
           </Link>
+          <Link to="/rider/sign-up" className="block text-ink-2 hover:text-ink">
+            Deliver with GETGO
+          </Link>
+          <Link to="/rider/sign-in" className="block text-ink-2 hover:text-ink">
+            Rider login
+          </Link>
         </nav>
         <nav aria-label="Help" className="space-y-2 text-small">
           <p className="font-semibold">Help</p>

@@ -5,7 +5,7 @@ import { MapPin, Phone, Store } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ORDER_SELECT, useUpdateOrderStatus } from '@/features/consumer/api';
 import { Logo } from '@/components/Logo';
-import { Button } from '@/components/ui/Button';
+import { Button, ButtonLink } from '@/components/ui/Button';
 import { EmptyState, ErrorState, Notice, PageLoading } from '@/components/ui/Feedback';
 import { Money, StatusText, Tabs, formatDateTime, timeAgo } from '@/components/ui/Display';
 import { ConfirmDialog } from '@/components/ui/Sheet';
@@ -24,7 +24,7 @@ interface RiderProfile {
   service_area_id: string;
   gcash_name: string;
   gcash_number: string;
-  status: 'active' | 'suspended';
+  status: 'pending' | 'active' | 'suspended';
 }
 
 interface Assignment {
@@ -389,7 +389,13 @@ export default function RiderPage() {
       {profile.isPending ? (
         <PageLoading rows={2} />
       ) : !profile.data ? (
-        <EmptyState title="Your rider profile isn’t set up">Ask GETGO support to finish adding you as a rider.</EmptyState>
+        <EmptyState title="Finish your rider details" action={<ButtonLink to="/rider/sign-up">Add vehicle and GCash details</ButtonLink>}>
+          Tell us your vehicle, delivery area and GCash account so GETGO can review your application.
+        </EmptyState>
+      ) : profile.data.status === 'pending' ? (
+        <EmptyState title="Your application is being reviewed" action={<ButtonLink to="/rider/sign-up" variant="secondary">Edit details</ButtonLink>}>
+          GETGO checks every rider before they can accept orders. You’ll get a notification when you’re approved.
+        </EmptyState>
       ) : profile.data.status !== 'active' ? (
         <Notice tone="danger" title="Your rider account is suspended">
           Contact GETGO support for details.

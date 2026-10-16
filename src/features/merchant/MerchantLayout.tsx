@@ -12,15 +12,17 @@ import { cx } from '@/components/ui/cx';
 import type { MemberRole } from '@/types/models';
 import { useStoreState } from './api';
 
-interface MerchantContextValue {
+export interface MerchantContextValue {
   merchantId: string;
+  /** Where the catalog screens live: /merchant, or the admin's per-store path. */
+  basePath: string;
   membership: Membership;
   role: MemberRole;
   /** Owners and managers edit the catalog and store; staff only toggle availability. */
   canManage: boolean;
 }
 
-const MerchantContext = createContext<MerchantContextValue | null>(null);
+export const MerchantContext = createContext<MerchantContextValue | null>(null);
 export function useMerchantContext() {
   const ctx = useContext(MerchantContext);
   if (!ctx) throw new Error('useMerchantContext must be used inside MerchantLayout');
@@ -117,6 +119,7 @@ export function MerchantLayout() {
     () =>
       membership && {
         merchantId: membership.merchant_id,
+        basePath: '/merchant',
         membership,
         role: membership.role,
         canManage: membership.role === 'owner' || membership.role === 'manager',
