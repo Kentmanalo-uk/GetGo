@@ -14,7 +14,7 @@ import { customerStatusLabel } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
 import { CATEGORY_LABELS, FOOD_CATEGORIES, SHOP_CATEGORIES, type MerchantCategory, type Promotion, type Storefront } from '@/types/models';
 import { useHomeFeed, useMyOrders, usePublicPromotions, useStorefronts } from './api';
-import { ItemSection, StoreRow } from './homeSections';
+import { FeaturedItems, ITEM_GRID, StoreRow } from './homeSections';
 import { StoreEntry } from './storeDisplay';
 
 type Filter = 'all' | 'food' | 'shops' | MerchantCategory;
@@ -128,9 +128,9 @@ function Promotions() {
   return (
     <section aria-labelledby="promos-heading">
       <SectionHeading id="promos-heading" title="Promo codes" />
-      <ul className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:px-0">
+      <ul className="grid gap-3 sm:grid-cols-3">
         {data.map((p) => (
-          <li key={p.id} className="w-64 shrink-0 snap-start border-l-2 border-accent-strong py-1 pl-3 sm:w-auto">
+          <li key={p.id} className="border-l-2 border-accent-strong py-1 pl-3">
             <p className="font-semibold">{promoLine(p)}</p>
             <p className="text-small text-ink-3">{p.title}</p>
             <p className="mt-1 font-mono text-small font-semibold tracking-wide">{p.code}</p>
@@ -175,9 +175,9 @@ function ItemsSkeleton() {
   return (
     <div className="space-y-3" role="status" aria-label="Loading items">
       <Skeleton className="h-5 w-40" />
-      <div className="flex gap-3 overflow-hidden">
+      <div className={ITEM_GRID}>
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="w-36 shrink-0 space-y-2 sm:w-44">
+          <div key={i} className={i >= 4 ? 'space-y-2 max-sm:hidden' : 'space-y-2'}>
             <Skeleton className="aspect-square w-full" />
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-1/3" />
@@ -253,18 +253,6 @@ export default function HomePage() {
       ) : (
         <>
           <Promotions />
-          {feed.isPending ? (
-            <ItemsSkeleton />
-          ) : (
-            feed.data && (
-              <>
-                <ItemSection id="popular-heading" title={`Popular in ${loc.area?.name ?? 'your area'}`} items={feed.data.popular.filter(matches)} />
-                <ItemSection id="meals-heading" title="Meals and snacks" items={feed.data.meals.filter(matches)} />
-                <ItemSection id="essentials-heading" title="Groceries and essentials" items={feed.data.essentials.filter(matches)} />
-                <StoreRow id="new-stores-heading" title="New on GETGO" stores={feed.data.new_stores.filter((s) => matches({ merchant_category: s.category }))} />
-              </>
-            )
-          )}
           {stores.data && <OrderAgain stores={stores.data} />}
 
           <section aria-labelledby="stores-heading" className="space-y-4">
@@ -305,6 +293,20 @@ export default function HomePage() {
               <StoreGrid stores={[...open, ...later]} />
             )}
           </section>
+
+          {/* Featured items below the stores; the full lists are on Explore. */}
+          {feed.isPending ? (
+            <ItemsSkeleton />
+          ) : (
+            feed.data && (
+              <>
+                <FeaturedItems id="popular-heading" section="popular" title={`Popular in ${loc.area?.name ?? 'your area'}`} items={feed.data.popular.filter(matches)} />
+                <FeaturedItems id="meals-heading" section="meals" title="Meals and snacks" items={feed.data.meals.filter(matches)} />
+                <FeaturedItems id="essentials-heading" section="essentials" title="Groceries and essentials" items={feed.data.essentials.filter(matches)} />
+                <StoreRow id="new-stores-heading" title="New on GETGO" stores={feed.data.new_stores.filter((s) => matches({ merchant_category: s.category }))} />
+              </>
+            )
+          )}
         </>
       )}
 

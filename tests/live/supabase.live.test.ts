@@ -284,6 +284,8 @@ describe.skipIf(!run)('live Supabase connections', () => {
     const feed = ok(await anon.rpc('home_feed', { p_service_area_id: areaId }), 'home feed') as { meals: Array<{ name: string }>; new_stores: unknown[] };
     expect(feed.meals.map((i) => i.name)).toContain('Rice Meal');
     expect(feed.new_stores).toHaveLength(1);
+    const explore = ok(await anon.rpc('explore_items', { p_service_area_id: areaId, p_section: 'meals', p_offset: 0, p_limit: 24 }), 'explore') as Array<{ name: string }>;
+    expect(explore.map((i) => i.name)).toContain('Rice Meal');
     const search = ok(await anon.rpc('search_catalog', { p_query: 'Rice Meal', p_service_area_id: areaId }), 'search') as { products: unknown[] };
     expect(search.products.length).toBeGreaterThan(0);
     const media = await fetch(anon.storage.from('media').getPublicUrl(uploaded.find((u) => u.path.startsWith('merchants/'))!.path).data.publicUrl);

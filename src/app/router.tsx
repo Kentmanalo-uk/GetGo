@@ -43,6 +43,7 @@ function NotFound() {
 const consumerRoutes: RouteObject[] = [
   { index: true, element: <HomePage /> },
   { path: 'search', lazy: lazy(() => import('@/features/consumer/SearchPage')) },
+  { path: 'explore', lazy: lazy(() => import('@/features/consumer/ExplorePage')) },
   { path: 'stores/:slug', lazy: lazy(() => import('@/features/consumer/StorePage')) },
   { path: 'cart', lazy: lazy(() => import('@/features/consumer/CartPage')) },
   { path: 'orders', lazy: lazy(() => import('@/features/consumer/OrdersPage')) },

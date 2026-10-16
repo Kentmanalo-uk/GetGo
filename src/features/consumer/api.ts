@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { realtimeChannel } from '@/lib/realtime';
 import { unwrap } from '@/lib/errors';
@@ -154,6 +154,24 @@ export function useHomeFeed(areaId: string | null) {
     queryFn: async () => unwrap(await supabase.rpc('home_feed', { p_service_area_id: areaId })) as HomeFeed,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
+  });
+}
+
+export type ExploreSection = 'all' | 'popular' | 'meals' | 'essentials';
+const EXPLORE_PAGE = 24;
+
+/** Paged items for the Explore page ("Load more" fetches the next page). */
+export function useExploreItems(areaId: string | null, section: ExploreSection) {
+  return useInfiniteQuery({
+    queryKey: ['explore', areaId, section],
+    enabled: Boolean(areaId),
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) =>
+      unwrap(
+        await supabase.rpc('explore_items', { p_service_area_id: areaId, p_section: section, p_offset: pageParam, p_limit: EXPLORE_PAGE }),
+      ) as FeedItem[],
+    getNextPageParam: (last, pages) => (last.length === EXPLORE_PAGE ? pages.length * EXPLORE_PAGE : undefined),
+    staleTime: 60_000,
   });
 }
 

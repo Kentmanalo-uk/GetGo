@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useMatches, useNavigate } from 'react-router';
-import { Bell, ChevronDown, Home, Receipt, Search, ShoppingBag, User } from 'lucide-react';
+import { Bell, ChevronDown, Compass, Home, Receipt, Search, ShoppingBag, User } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { cx } from '@/components/ui/cx';
 import { ButtonLink } from '@/components/ui/Button';
@@ -86,6 +86,9 @@ function DesktopHeader() {
         <AddressButton className="max-w-64" />
         <HeaderSearch />
         <nav aria-label="Main" className="ml-auto flex items-center gap-6">
+          <NavLink to="/explore" className={navClass}>
+            Explore
+          </NavLink>
           <NavLink to="/partner" className={navClass}>
             Partner with GETGO
           </NavLink>
@@ -149,7 +152,7 @@ function BottomNav() {
   const cartCount = useCartCount();
   const items = [
     { to: '/', label: 'Home', icon: Home, end: true },
-    { to: '/search', label: 'Search', icon: Search },
+    { to: '/explore', label: 'Explore', icon: Compass },
     { to: '/cart', label: 'Cart', icon: ShoppingBag, badge: cartCount },
     { to: '/orders', label: 'Orders', icon: Receipt },
     { to: '/account', label: 'Account', icon: User },

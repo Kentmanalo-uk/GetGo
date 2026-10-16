@@ -49,3 +49,36 @@ describe('home feed', () => {
     expect(f.new_stores).toEqual([]);
   });
 });
+
+describe('explore items', () => {
+  let db: TestDb;
+  let world: World;
+  let store: Store;
+
+  beforeAll(async () => {
+    db = await TestDb.create();
+    world = await createPlatform(db);
+    store = await createStore(db, world, 'explore@example.test', 'Explore Kitchen');
+    for (let i = 1; i <= 5; i++) {
+      await db.as(store.owner, `select save_product($1, $2)`, [store.merchantId, JSON.stringify({ name: `Item ${i}`, base_price_minor: i * 1000, status: 'published' })]);
+    }
+  });
+
+  const page = async (section: string, offset: number, limit: number) =>
+    (await db.as<{ r: Array<{ name: string }> }>('anon', `select explore_items($1, $2, $3, $4) as r`, [world.areaId, section, offset, limit]))[0].r;
+
+  test('pages through items without repeats', async () => {
+    const first = await page('all', 0, 4);
+    const second = await page('all', 4, 4);
+    expect(first).toHaveLength(4);
+    expect(second).toHaveLength(2);
+    const names = [...first, ...second].map((i) => i.name);
+    expect(new Set(names).size).toBe(6);
+  });
+
+  test('filters by section', async () => {
+    expect(await page('meals', 0, 24)).toHaveLength(6);
+    expect(await page('essentials', 0, 24)).toEqual([]);
+    expect(await page('popular', 0, 24)).toEqual([]);
+  });
+});
