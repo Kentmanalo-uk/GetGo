@@ -21,15 +21,27 @@ interface AuthContextValue {
   memberships: Membership[];
   isStaff: boolean;
   hasRole: (role: AppRole) => boolean;
+  /** Set when the profile/roles couldn't be loaded; screens show it with a retry. */
+  identityError: unknown;
   refreshIdentity: () => Promise<unknown>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const PROFILE_COLUMNS = 'id, email, full_name, phone, email_verified_at';
+
+/** Loads the profile, creating it if the account somehow doesn't have one yet. */
+async function loadProfile(userId: string): Promise<Profile> {
+  const existing = unwrap(await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).maybeSingle()) as Profile | null;
+  if (existing) return existing;
+  unwrap(await supabase.rpc('ensure_my_profile'));
+  return unwrap(await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).single()) as Profile;
+}
+
 async function loadIdentity(userId: string) {
   const [profile, roles, memberships] = await Promise.all([
-    supabase.from('profiles').select('id, email, full_name, phone, email_verified_at').eq('id', userId).single().then(unwrap),
+    loadProfile(userId),
     supabase.from('user_roles').select('role').eq('user_id', userId).then(unwrap),
     supabase
       .from('merchant_members')
@@ -101,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       memberships: identity.data?.memberships ?? [],
       isStaff: roles.some((r) => r === 'admin' || r === 'support' || r === 'finance'),
       hasRole: (role) => roles.includes(role),
+      identityError: identity.error,
       refreshIdentity: () => identity.refetch(),
       signOut: async () => {
         await supabase.auth.signOut();

@@ -9,7 +9,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { VerifyEmailBanner } from '@/features/auth/VerifyEmailBanner';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
-import { EmptyState, FormError, Notice, PageLoading } from '@/components/ui/Feedback';
+import { EmptyState, ErrorState, FormError, Notice, PageLoading } from '@/components/ui/Feedback';
 import { PageHeader, timeAgo } from '@/components/ui/Display';
 import { ConfirmDialog, Sheet } from '@/components/ui/Sheet';
 import { cx } from '@/components/ui/cx';
@@ -100,6 +100,17 @@ export function AccountPage() {
         <ul className="divide-y divide-line border-t border-line">
           <MenuLink to="/partner" icon={Store} label="Partner with GETGO" detail="Sell on GETGO" />
         </ul>
+      </div>
+    );
+  }
+  if (!auth.profile && auth.identityError) {
+    return (
+      <div className="page-x mx-auto max-w-3xl">
+        <PageHeader title="Account" />
+        <ErrorState error={auth.identityError} onRetry={() => auth.refreshIdentity()} />
+        <Button variant="ghost" className="-ml-4" icon={<LogOut className="size-4" aria-hidden />} onClick={() => auth.signOut().then(() => navigate('/'))}>
+          Sign out
+        </Button>
       </div>
     );
   }
