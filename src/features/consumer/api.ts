@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { realtimeChannel } from '@/lib/realtime';
 import { unwrap } from '@/lib/errors';
 import { useAuth } from '@/features/auth/AuthProvider';
 import type { ConfigurableProduct } from '@/domain/customization';
@@ -413,8 +414,7 @@ export function useOrderRealtime(filter: { column: 'id' | 'merchant_id' | 'custo
   const keyString = JSON.stringify(keys);
   useEffect(() => {
     if (!filter.value) return;
-    const channel = supabase
-      .channel(`orders:${filter.column}:${filter.value}`)
+    const channel = realtimeChannel(`orders:${filter.column}:${filter.value}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `${filter.column}=eq.${filter.value}` }, () => {
         for (const key of JSON.parse(keyString) as unknown[][]) qc.invalidateQueries({ queryKey: key });
       })

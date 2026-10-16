@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 import { orderStatusLabel, riderNextStep, statusTone } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
 import { supabase } from '@/lib/supabase';
+import { realtimeChannel } from '@/lib/realtime';
 import { unwrap, userMessage } from '@/lib/errors';
 import type { OrderWithItems } from '@/types/models';
 
@@ -359,8 +360,7 @@ export default function RiderPage() {
   // Live updates: new orders in the area and changes to this rider's jobs.
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel(`rider:${userId}`)
+    const channel = realtimeChannel(`rider:${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments', filter: `rider_id=eq.${userId}` }, () =>
         qc.invalidateQueries({ queryKey: ['rider'] }),
       );

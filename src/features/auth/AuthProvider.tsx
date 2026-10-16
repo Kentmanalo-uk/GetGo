@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { realtimeChannel } from '@/lib/realtime';
 import { unwrap } from '@/lib/errors';
 import type { AppRole, MemberRole, MerchantCategory, Profile } from '@/types/models';
 
@@ -67,6 +68,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const userId = session?.user.id ?? null;
+  // One live subscription to the user's notifications for the whole app;
+  // components read them through useNotifications().
+  useEffect(() => {
+    if (!userId) return;
+    const channel = realtimeChannel(`notifications:${userId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, () =>
+        queryClient.invalidateQueries({ queryKey: ['notifications', userId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
+
   const identity = useQuery({
     queryKey: ['identity', userId],
     queryFn: () => loadIdentity(userId!),
