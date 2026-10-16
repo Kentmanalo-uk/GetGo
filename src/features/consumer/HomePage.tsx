@@ -10,6 +10,7 @@ import { Button, ButtonLink } from '@/components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback';
 import { SectionHeading, Tabs } from '@/components/ui/Display';
 import { cx } from '@/components/ui/cx';
+import { ICON_GRADIENT } from '@/components/IconGradient';
 import { customerStatusLabel } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
 import { CATEGORY_LABELS, FOOD_CATEGORIES, SHOP_CATEGORIES, type MerchantCategory, type Promotion, type Storefront } from '@/types/models';
@@ -80,17 +81,17 @@ function ServiceShortcuts({ filter, onFilter }: { filter: Filter; onFilter: (f: 
               type="button"
               onClick={() => (available ? onFilter(active ? 'all' : (key as Filter)) : setInfo(key as keyof typeof UNAVAILABLE_SERVICES))}
               aria-pressed={available ? active : undefined}
-              className="group flex flex-col items-center gap-1.5 py-1 sm:flex-row sm:gap-2.5"
+              className="group flex flex-col items-center gap-1 py-1 sm:flex-row sm:gap-2.5"
             >
-              <span
+              <Icon
                 className={cx(
-                  'flex size-12 items-center justify-center rounded-media transition-colors sm:size-10',
-                  active ? 'bg-accent text-ink' : available ? 'bg-canvas text-ink group-hover:bg-line' : 'bg-canvas text-ink-4',
+                  'size-10 transition-transform group-hover:scale-105 motion-reduce:transition-none sm:size-9',
+                  available ? ICON_GRADIENT : 'text-ink-4',
                 )}
-              >
-                <Icon className="size-[22px] sm:size-5" weight={active ? 'fill' : 'regular'} aria-hidden />
-              </span>
-              <span className={cx('text-small font-semibold', available ? 'text-ink' : 'text-ink-4')}>
+                weight={active ? 'fill' : 'duotone'}
+                aria-hidden
+              />
+              <span className={cx('text-small font-semibold', !available ? 'text-ink-4' : active ? 'text-accent-ink' : 'text-ink')}>
                 {label}
                 {!available && <span className="sr-only"> (not yet available)</span>}
               </span>

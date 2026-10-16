@@ -62,9 +62,8 @@ export function StoreEntry({ store, showState = true }: { store: Storefront; sho
         {store.cover_path ? (
           <MediaImage path={store.cover_path} alt="" className="size-20 transition-transform duration-300 group-hover:scale-[1.02] sm:aspect-[16/10] sm:h-auto sm:w-full" />
         ) : (
-          <div className="flex size-20 items-center justify-center bg-canvas sm:aspect-[16/10] sm:h-auto sm:w-full">
-            <StoreMark name={store.name} logoPath={store.logo_path} size="md" />
-          </div>
+          // No cover photo: the store's logo on its own, larger on desktop.
+          <StoreMark name={store.name} logoPath={store.logo_path} size="lg" className="sm:size-28 sm:text-display" />
         )}
       </div>
       <div className="min-w-0 flex-1 sm:pt-3">

@@ -10,6 +10,7 @@ import { LocationProvider } from '@/features/location/LocationProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { Logo } from '@/components/Logo';
 import { IconContext } from '@/components/icons';
+import { IconGradientDefs } from '@/components/IconGradient';
 import { router } from '@/app/router';
 
 function MissingConfiguration() {
@@ -29,6 +30,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* App-wide icon defaults (Phosphor). */}
     <IconContext.Provider value={{ weight: 'regular', mirrored: false }}>
+      <IconGradientDefs />
       {isSupabaseConfigured ? (
         <QueryClientProvider client={queryClient}>
           <ToastProvider>

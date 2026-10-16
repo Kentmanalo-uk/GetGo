@@ -33,10 +33,7 @@ export function ItemCard({ item }: { item: FeedItem }) {
         {item.has_sizes && <span className="font-normal text-ink-3">from </span>}
         {formatMoney(item.price_minor)}
       </p>
-      <p className="mt-1 flex min-w-0 items-center gap-1.5 text-micro text-ink-3">
-        <StoreMark name={item.merchant_name} logoPath={item.merchant_logo_path} size="xs" />
-        <span className="truncate">{item.merchant_name}</span>
-      </p>
+      <p className="truncate text-micro text-ink-3">{item.merchant_name}</p>
     </Link>
   );
 }
