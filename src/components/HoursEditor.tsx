@@ -1,4 +1,4 @@
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from '@/components/icons';
 import { WEEKDAYS, type HoursEntry } from '@/domain/hours';
 import { cx } from './ui/cx';
 

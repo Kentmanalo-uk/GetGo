@@ -1,6 +1,6 @@
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Search } from 'lucide-react';
+import { Search } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Feedback';
 import { cx } from '@/components/ui/cx';

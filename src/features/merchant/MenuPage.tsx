@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ArrowDown, ArrowUp, Plus, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, Search } from '@/components/icons';
 import { Button, ButtonLink, IconButton } from '@/components/ui/Button';
 import { EmptyState, ErrorState, Notice, PageLoading } from '@/components/ui/Feedback';
 import { Input } from '@/components/ui/Field';

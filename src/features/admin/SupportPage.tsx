@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router';
-import { LifeBuoy } from 'lucide-react';
+import { LifeBuoy } from '@/components/icons';
 import { EmptyState, ErrorState, Notice } from '@/components/ui/Feedback';
 import { PageHeader, StatusText, Tabs, formatDateTime, timeAgo } from '@/components/ui/Display';
 import type { Ticket } from '@/features/support/SupportPages';

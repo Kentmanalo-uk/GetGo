@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router';
-import { CreditCard } from 'lucide-react';
+import { CreditCard } from '@/components/icons';
 import { EmptyState, ErrorState, Notice } from '@/components/ui/Feedback';
 import { Money, PageHeader, StatusText, Tabs, formatDateTime, timeAgo } from '@/components/ui/Display';
 import { formatMoney } from '@/domain/money';

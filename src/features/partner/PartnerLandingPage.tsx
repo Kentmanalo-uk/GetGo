@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Check, Clock } from 'lucide-react';
+import { ArrowRight, Check, Clock } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ButtonLink } from '@/components/ui/Button';
 import { supabase, env } from '@/lib/supabase';

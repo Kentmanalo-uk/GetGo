@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MapPin, Phone, Store } from 'lucide-react';
+import { MapPin, Phone, Store } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ORDER_SELECT, useUpdateOrderStatus } from '@/features/consumer/api';
 import { Logo } from '@/components/Logo';

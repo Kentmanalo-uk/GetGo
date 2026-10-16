@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ButtonLink, Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState, Notice, PageLoading } from '@/components/ui/Feedback';

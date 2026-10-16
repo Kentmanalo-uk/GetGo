@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { Search } from 'lucide-react';
+import { Search } from '@/components/icons';
 import { useLocationContext } from '@/features/location/LocationProvider';
 import { EmptyState, ErrorState, PageLoading } from '@/components/ui/Feedback';
 import { MediaImage } from '@/components/ui/Display';

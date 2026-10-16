@@ -6,7 +6,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
-import { ChevronDown, Minus, Plus } from 'lucide-react';
+import { ChevronDown, Minus, Plus } from '@/components/icons';
 import { cx } from './cx';
 
 const control =

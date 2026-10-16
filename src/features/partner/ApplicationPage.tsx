@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Check, FileText, Trash2, Upload } from 'lucide-react';
+import { Check, FileText, Trash2, Upload } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useServiceAreas } from '@/features/consumer/api';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -369,7 +369,7 @@ function DocumentsStep({ app, next, back }: StepProps) {
                     className={cx('mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full', files.length ? 'bg-ink text-accent' : 'border-2 border-line-strong')}
                     aria-hidden
                   >
-                    {files.length > 0 && <Check className="size-3" strokeWidth={3} />}
+                    {files.length > 0 && <Check className="size-3" weight="bold" />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold">

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useMatches, useNavigate } from 'react-router';
-import { Bell, ChevronDown, Compass, Home, Receipt, Search, ShoppingBag, User } from 'lucide-react';
+import { Bell, ChevronDown, Compass, Home, Receipt, Search, ShoppingBag, User } from '@/components/icons';
 import { Logo } from '@/components/Logo';
 import { cx } from '@/components/ui/cx';
 import { ButtonLink } from '@/components/ui/Button';
@@ -172,7 +172,7 @@ function BottomNav() {
               {({ isActive }) => (
                 <>
                   <span className="relative">
-                    <Icon className="size-[22px]" strokeWidth={isActive ? 2.4 : 1.8} aria-hidden />
+                    <Icon className="size-[22px]" weight={isActive ? 'fill' : 'regular'} aria-hidden />
                     {badge ? (
                       <span className="tabular absolute -top-1.5 -right-2.5 min-w-4 rounded bg-accent px-1 text-center text-[10px] leading-4 text-ink">
                         {badge}

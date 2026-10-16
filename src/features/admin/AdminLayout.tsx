@@ -16,8 +16,8 @@ import {
   Store,
   Tag,
   Users,
-  type LucideIcon,
-} from 'lucide-react';
+  type IconComponent,
+} from '@/components/icons';
 import { Logo } from '@/components/Logo';
 import { IconButton } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
@@ -29,7 +29,7 @@ import { ROLE_LABELS, useAdminOverview, type AdminOverview } from './api';
 interface NavItem {
   to: string;
   label: string;
-  icon: LucideIcon;
+  icon: IconComponent;
   roles: AppRole[];
   end?: boolean;
   count?: keyof AdminOverview;

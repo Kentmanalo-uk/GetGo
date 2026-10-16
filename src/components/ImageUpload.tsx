@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus } from '@/components/icons';
 import { uploadMedia, mediaUrl } from '@/lib/media';
 import { Button } from './ui/Button';
 import { Spinner } from './ui/Feedback';

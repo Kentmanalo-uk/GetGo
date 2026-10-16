@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Tag } from 'lucide-react';
+import { Plus, Tag } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState, FormError } from '@/components/ui/Feedback';
 import { ChoiceRow, Field, Input, Select, Switch, Textarea } from '@/components/ui/Field';

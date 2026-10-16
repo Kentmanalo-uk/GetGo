@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { ArrowDown, ArrowUp, Eye, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Eye, X } from '@/components/icons';
 import { Button, IconButton } from '@/components/ui/Button';
 import { Checkbox, Field, Input, Select, Switch, Textarea } from '@/components/ui/Field';
 import { EmptyState, ErrorState, Notice, PageLoading } from '@/components/ui/Feedback';

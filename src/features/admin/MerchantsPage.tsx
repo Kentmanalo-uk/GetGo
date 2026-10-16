@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Plus, Store } from 'lucide-react';
+import { Plus, Store } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
 import { EmptyState, ErrorState } from '@/components/ui/Feedback';

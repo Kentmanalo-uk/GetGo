@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { MediaImage, SectionHeading, StoreMark } from '@/components/ui/Display';
 import { cx } from '@/components/ui/cx';

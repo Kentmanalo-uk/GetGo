@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Star } from 'lucide-react';
+import { Star } from '@/components/icons';
 import { cx } from '@/components/ui/cx';
 import { MediaImage, StoreMark } from '@/components/ui/Display';
 import { describeNextOpen } from '@/domain/hours';
@@ -28,7 +28,7 @@ export function StoreMeta({ store, className }: { store: Storefront; className?:
       {store.rating_count > 0 && (
         <>
           <span className="inline-flex items-center gap-0.5 font-semibold text-ink">
-            <Star className="size-3.5 fill-ink" aria-hidden />
+            <Star className="size-3.5" weight="fill" aria-hidden />
             {store.rating_avg}
           </span>
           <span className="tabular">({store.rating_count})</span>

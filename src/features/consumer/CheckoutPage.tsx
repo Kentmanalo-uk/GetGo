@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { MapPin, Pencil, Plus } from 'lucide-react';
+import { MapPin, Pencil, Plus } from '@/components/icons';
 import { useLocationContext } from '@/features/location/LocationProvider';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { ChoiceRow, Field, Input, QuantityStepper, Textarea } from '@/components/ui/Field';

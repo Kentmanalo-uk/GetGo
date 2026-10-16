@@ -9,6 +9,7 @@ import { AuthProvider } from '@/features/auth/AuthProvider';
 import { LocationProvider } from '@/features/location/LocationProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { Logo } from '@/components/Logo';
+import { IconContext } from '@/components/icons';
 import { router } from '@/app/router';
 
 function MissingConfiguration() {
@@ -26,18 +27,21 @@ function MissingConfiguration() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {isSupabaseConfigured ? (
-      <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <AuthProvider>
-            <LocationProvider>
-              <RouterProvider router={router} />
-            </LocationProvider>
-          </AuthProvider>
-        </ToastProvider>
-      </QueryClientProvider>
-    ) : (
-      <MissingConfiguration />
-    )}
+    {/* App-wide icon defaults (Phosphor). */}
+    <IconContext.Provider value={{ weight: 'regular', mirrored: false }}>
+      {isSupabaseConfigured ? (
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            <AuthProvider>
+              <LocationProvider>
+                <RouterProvider router={router} />
+              </LocationProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </QueryClientProvider>
+      ) : (
+        <MissingConfiguration />
+      )}
+    </IconContext.Provider>
   </StrictMode>,
 );

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router';
-import { Receipt } from 'lucide-react';
+import { Receipt } from '@/components/icons';
 import { EmptyState, ErrorState } from '@/components/ui/Feedback';
 import { Money, PageHeader, StatusText, Tabs, formatDateTime, timeAgo } from '@/components/ui/Display';
 import { formatMoney } from '@/domain/money';

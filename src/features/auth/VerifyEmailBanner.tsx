@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { MailCheck } from 'lucide-react';
+import { MailCheck } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Notice } from '@/components/ui/Feedback';
 import { useToast } from '@/components/ui/Toast';

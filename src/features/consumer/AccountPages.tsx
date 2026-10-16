@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Bell, Bike, ChevronRight, LifeBuoy, LogOut, MapPin, Shield, Store } from 'lucide-react';
+import { Bell, Bike, ChevronRight, LifeBuoy, LogOut, MapPin, Shield, Store } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { VerifyEmailBanner } from '@/features/auth/VerifyEmailBanner';
 import { Button, ButtonLink } from '@/components/ui/Button';

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Check, MapPin, Plus } from 'lucide-react';
+import { Check, MapPin, Plus } from '@/components/icons';
 import { Sheet } from '@/components/ui/Sheet';
 import { cx } from '@/components/ui/cx';
 import { useAuth } from '@/features/auth/AuthProvider';

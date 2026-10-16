@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AlertCircle, Info, RotateCw } from 'lucide-react';
+import { AlertCircle, Info, RotateCw } from '@/components/icons';
 import { cx } from './cx';
 import { userMessage } from '@/lib/errors';
 

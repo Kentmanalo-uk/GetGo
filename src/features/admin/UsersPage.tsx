@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { ErrorState, FormError, Skeleton } from '@/components/ui/Feedback';
 import { Field, Input, Select } from '@/components/ui/Field';

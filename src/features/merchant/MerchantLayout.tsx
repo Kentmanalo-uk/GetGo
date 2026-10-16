@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
-import { BookOpen, ChevronsUpDown, ListChecks, LogOut, Settings2, Store } from 'lucide-react';
+import { BookOpen, ChevronsUpDown, ListChecks, LogOut, Settings2, Store } from '@/components/icons';
 import { useAuth, type Membership } from '@/features/auth/AuthProvider';
 import { useMyApplication } from '@/features/partner/api';
 import { Logo } from '@/components/Logo';

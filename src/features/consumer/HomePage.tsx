@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ArrowRight, Package, Search, ShoppingBasket, UtensilsCrossed, ListChecks } from 'lucide-react';
+import { ArrowRight, Package, Search, ShoppingBasket, UtensilsCrossed, ListChecks } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useLocationContext } from '@/features/location/LocationProvider';
 import { AddressButton } from '@/app/layouts/ConsumerLayout';
@@ -88,7 +88,7 @@ function ServiceShortcuts({ filter, onFilter }: { filter: Filter; onFilter: (f: 
                   active ? 'bg-accent text-ink' : available ? 'bg-canvas text-ink group-hover:bg-line' : 'bg-canvas text-ink-4',
                 )}
               >
-                <Icon className="size-[22px] sm:size-5" strokeWidth={1.9} aria-hidden />
+                <Icon className="size-[22px] sm:size-5" weight={active ? 'fill' : 'regular'} aria-hidden />
               </span>
               <span className={cx('text-small font-semibold', available ? 'text-ink' : 'text-ink-4')}>
                 {label}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LifeBuoy } from 'lucide-react';
+import { LifeBuoy } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useMyOrders } from '@/features/consumer/api';
 import { Button } from '@/components/ui/Button';

@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router';
-import { Search, ShoppingBasket } from 'lucide-react';
+import { Search, ShoppingBasket } from '@/components/icons';
 import { useLocationContext } from '@/features/location/LocationProvider';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback';

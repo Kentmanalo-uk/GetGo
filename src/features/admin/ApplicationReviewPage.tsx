@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
-import { FileText } from 'lucide-react';
+import { FileText } from '@/components/icons';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { EmptyState, ErrorState, FormError, Notice, PageLoading } from '@/components/ui/Feedback';
 import { MediaImage, PageHeader, SectionHeading, StatusText, formatDateTime } from '@/components/ui/Display';

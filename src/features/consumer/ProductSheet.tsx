@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { X } from 'lucide-react';
+import { X } from '@/components/icons';
 import { Sheet } from '@/components/ui/Sheet';
 import { Button } from '@/components/ui/Button';
 import { ChoiceRow, Field, QuantityStepper, Textarea } from '@/components/ui/Field';

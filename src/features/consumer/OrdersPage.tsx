@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Receipt } from 'lucide-react';
+import { Receipt } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ButtonLink } from '@/components/ui/Button';
 import { EmptyState, ErrorState, PageLoading } from '@/components/ui/Feedback';

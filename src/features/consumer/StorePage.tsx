@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
-import { Clock, Info, MapPin, Search, Star } from 'lucide-react';
+import { Clock, Info, MapPin, Search, Star } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useLocationContext } from '@/features/location/LocationProvider';
 import { Sheet } from '@/components/ui/Sheet';
@@ -88,7 +88,7 @@ function Reviews({ storeId }: { storeId: string }) {
         {withText.slice(0, 6).map((r) => (
           <li key={r.id} className="space-y-1">
             <p className="flex items-center gap-1 text-small font-semibold">
-              <Star className="size-3.5 fill-ink" aria-hidden /> {r.rating}
+              <Star className="size-3.5" weight="fill" aria-hidden /> {r.rating}
               <span className="font-normal text-ink-3">
                 · {r.reviewer_first_name} · {formatDate(r.created_at)}
               </span>

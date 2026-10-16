@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { FileText } from 'lucide-react';
+import { FileText } from '@/components/icons';
 import { EmptyState, ErrorState, Notice } from '@/components/ui/Feedback';
 import { Select } from '@/components/ui/Field';
 import { PageHeader, formatDateTime } from '@/components/ui/Display';

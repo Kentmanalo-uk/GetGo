@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
-import { Check, Copy, Phone, Star } from 'lucide-react';
+import { Check, Copy, Phone, Star } from '@/components/icons';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { EmptyState, ErrorState, Notice, PageLoading } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
@@ -26,7 +26,7 @@ function Progress({ order }: { order: OrderWithItems }) {
           <li key={step.label} className="flex gap-3 sm:flex-col sm:gap-2" aria-current={current ? 'step' : undefined}>
             <div className="flex flex-col items-center sm:flex-row">
               <span className={cx('flex size-6 shrink-0 items-center justify-center rounded-full border-2', done ? 'border-ink bg-ink text-accent' : 'border-line-strong bg-surface')}>
-                {done && <Check className="size-3.5" strokeWidth={3} aria-hidden />}
+                {done && <Check className="size-3.5" weight="bold" aria-hidden />}
               </span>
               {i < PROGRESS_STEPS.length - 1 && <span className={cx('h-6 w-0.5 sm:h-0.5 sm:w-full', i < reached ? 'bg-ink' : 'bg-line')} aria-hidden />}
             </div>
@@ -136,7 +136,7 @@ function ReviewForm({ order }: { order: OrderWithItems }) {
   if (review.data) {
     return (
       <p className="flex items-center gap-1 text-small text-ink-2">
-        You rated {order.merchant_name} <Star className="size-3.5 fill-ink" aria-hidden /> {review.data.rating}
+        You rated {order.merchant_name} <Star className="size-3.5 text-ink" weight="fill" aria-hidden /> {review.data.rating}
       </p>
     );
   }
@@ -165,7 +165,7 @@ function ReviewForm({ order }: { order: OrderWithItems }) {
               aria-pressed={rating === n}
               className="inline-flex size-11 items-center justify-center rounded-control hover:bg-canvas"
             >
-              <Star className={cx('size-7', n <= rating ? 'fill-ink text-ink' : 'text-line-strong')} aria-hidden />
+              <Star className={cx('size-7', n <= rating ? 'text-ink' : 'text-line-strong')} weight={n <= rating ? 'fill' : 'regular'} aria-hidden />
             </button>
           ))}
         </div>

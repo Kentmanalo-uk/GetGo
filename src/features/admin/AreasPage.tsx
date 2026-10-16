@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { MapPin, Plus } from 'lucide-react';
+import { MapPin, Plus } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState, FormError } from '@/components/ui/Feedback';
 import { Field, Input, Select, Switch } from '@/components/ui/Field';

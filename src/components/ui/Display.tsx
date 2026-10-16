@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@/components/icons';
 import { Link, useNavigate } from 'react-router';
 import { cx } from './cx';
 import { formatMoney } from '@/domain/money';

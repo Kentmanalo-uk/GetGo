@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList } from '@/components/icons';
 import { EmptyState, ErrorState, Notice } from '@/components/ui/Feedback';
 import { PageHeader, StatusText, Tabs, formatDate, formatDateTime } from '@/components/ui/Display';
 import { CATEGORY_LABELS } from '@/types/models';

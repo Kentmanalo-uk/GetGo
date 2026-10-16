@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { X } from '@/components/icons';
 import { cx } from './cx';
 import { Button } from './Button';
 import { Field, Textarea } from './Field';

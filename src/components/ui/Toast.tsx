@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X } from '@/components/icons';
 import { cx } from './cx';
 
 interface ToastItem {
