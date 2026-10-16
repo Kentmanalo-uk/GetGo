@@ -46,7 +46,8 @@ export class TestDb {
     return row.id;
   }
 
-  async as<T = Record<string, unknown>>(actor: Actor, query: string, params: unknown[] = []): Promise<T[]> {
+  /** Runs as a user; `claims` are extra JWT claims (e.g. email, amr). */
+  async as<T = Record<string, unknown>>(actor: Actor, query: string, params: unknown[] = [], claims: Record<string, unknown> = {}): Promise<T[]> {
     return this.pg.transaction(async (tx: Transaction) => {
       if (actor === 'anon') {
         await tx.exec('set local role anon');
@@ -54,6 +55,7 @@ export class TestDb {
         await tx.exec('set local role service_role');
       } else {
         await tx.query(`select set_config('request.jwt.claim.sub', $1, true)`, [actor]);
+        await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: actor, role: 'authenticated', ...claims })]);
         await tx.exec('set local role authenticated');
       }
       return (await tx.query<T>(query, params)).rows;
@@ -61,9 +63,9 @@ export class TestDb {
   }
 
   /** Runs a query expected to fail and returns the error. */
-  async expectError(actor: Actor, query: string, params: unknown[] = []): Promise<DbError> {
+  async expectError(actor: Actor, query: string, params: unknown[] = [], claims: Record<string, unknown> = {}): Promise<DbError> {
     try {
-      await this.as(actor, query, params);
+      await this.as(actor, query, params, claims);
     } catch (error) {
       return error as DbError;
     }

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Bell, Bike, ChevronRight, LifeBuoy, LogOut, MapPin, Shield, Store } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { VerifyEmailBanner } from '@/features/auth/VerifyEmailBanner';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { EmptyState, FormError, Notice, PageLoading } from '@/components/ui/Feedback';
@@ -116,6 +117,7 @@ export function AccountPage() {
       <PageHeader title={p.full_name ?? 'Account'} actions={<Button variant="secondary" size="sm" onClick={() => setEditing(true)}>Edit</Button>}>
         {[p.email, p.phone].filter(Boolean).join(' · ')}
       </PageHeader>
+      <VerifyEmailBanner />
       {!p.phone && (
         <Notice tone="warning" className="mb-4" action={<Button size="sm" variant="dark" onClick={() => setEditing(true)}>Add</Button>}>
           Add a mobile number so stores and riders can reach you.

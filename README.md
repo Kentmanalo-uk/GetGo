@@ -74,8 +74,10 @@ Then from `/admin`:
 
 ### Supabase Auth settings
 
-- Email/password sign-in enabled; email confirmation recommended.
-- **Site URL** and **Redirect URLs**: your web app origin (e.g. `https://getgo.example`), including `/reset-password`.
+- **Authentication → Sign In / Providers → Email**: email/password enabled, **Confirm email turned off**. People use the app as soon as they sign up.
+- Email verification is handled by GETGO itself. The Account page shows a "Verify your email" banner that sends a one-time sign-in link. Opening it calls `confirm_email_verification()`, which accepts it only if the session came from an email link in the last hour, and sets `profiles.email_verified_at`.
+- **Site URL** and **Redirect URLs**: your web app origin (e.g. `https://getgo.example`), including `/account` and `/reset-password`.
+- **SMTP**: Supabase's built-in email sender is heavily rate-limited and meant for testing. Set up custom SMTP (Authentication → Emails) before launch so verification and password-reset emails reach everyone.
 
 ## How the rules are enforced
 

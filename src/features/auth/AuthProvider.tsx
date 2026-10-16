@@ -28,7 +28,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function loadIdentity(userId: string) {
   const [profile, roles, memberships] = await Promise.all([
-    supabase.from('profiles').select('id, email, full_name, phone').eq('id', userId).single().then(unwrap),
+    supabase.from('profiles').select('id, email, full_name, phone, email_verified_at').eq('id', userId).single().then(unwrap),
     supabase.from('user_roles').select('role').eq('user_id', userId).then(unwrap),
     supabase
       .from('merchant_members')

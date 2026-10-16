@@ -25,6 +25,7 @@ export interface Profile {
   email: string | null;
   full_name: string | null;
   phone: string | null;
+  email_verified_at: string | null;
 }
 
 export interface ServiceArea {
