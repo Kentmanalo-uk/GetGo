@@ -82,7 +82,7 @@ export default function ProductPage() {
     <div className="pb-48 lg:pb-16">
       {topBar}
 
-      <div className="page-x mx-auto max-w-7xl pt-2 sm:pt-4 lg:pt-10">
+      <div className="page-x mx-auto max-w-7xl sm:pt-4 lg:pt-10">
         <nav aria-label="Breadcrumb" className="mb-6 hidden min-w-0 items-center gap-2 text-small text-ink-3 lg:flex">
           <button type="button" onClick={back} className="inline-flex items-center gap-1.5 font-semibold text-ink-2 hover:text-ink">
             <ArrowLeft className="size-4" aria-hidden /> Back
@@ -96,8 +96,8 @@ export default function ProductPage() {
         </nav>
 
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-14 xl:grid-cols-[minmax(0,1fr)_30rem] xl:gap-20">
-          {/* A thin frame so photos shot on white still read as a picture. */}
-          <div className="overflow-hidden rounded-sheet border border-line lg:sticky lg:top-24">
+          {/* Edge to edge on phones; framed on wider screens so photos shot on white still read as a picture. */}
+          <div className="-mx-4 overflow-hidden sm:mx-0 sm:rounded-sheet sm:border sm:border-line lg:sticky lg:top-24">
             {p.image_path ? (
               <MediaImage path={p.image_path} alt={p.name} eager className="aspect-[4/3] w-full lg:aspect-[5/4]" />
             ) : (
