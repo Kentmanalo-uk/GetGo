@@ -244,7 +244,9 @@ export function ProductSheet({
           {summary.length > 0 && <p className="text-small text-ink-3 line-clamp-2">{summary.join(' · ')}</p>}
           {mutation.error && <Notice tone="danger">{userMessage(mutation.error)}</Notice>}
           {preview && <p className="text-small text-ink-3">This is how customers see this item. Nothing is added to a cart.</p>}
-          {!preview && !storeOpen && !editing && <p className="text-small text-ink-3">The store is closed now. You can add items and check out when it opens.</p>}
+          {!preview && !storeOpen && !editing && (
+            <Notice tone="warning">This store can’t take orders right now. You can add items and check out when it opens.</Notice>
+          )}
           <div className="flex items-center gap-3">
             <QuantityStepper
               label="quantity"

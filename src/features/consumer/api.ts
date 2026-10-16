@@ -124,6 +124,39 @@ export function useStoreReviews(merchantId: string | undefined) {
   });
 }
 
+export interface FeedItem {
+  id: string;
+  name: string;
+  image_path: string | null;
+  is_available: boolean;
+  price_minor: number;
+  has_sizes: boolean;
+  merchant_id: string;
+  merchant_name: string;
+  merchant_slug: string;
+  merchant_state: Storefront['state'];
+  merchant_category: Storefront['category'];
+  orders: number;
+}
+
+export interface HomeFeed {
+  popular: FeedItem[];
+  meals: FeedItem[];
+  essentials: FeedItem[];
+  new_stores: Storefront[];
+}
+
+/** Home page item and store sections for an area (public data only). */
+export function useHomeFeed(areaId: string | null) {
+  return useQuery({
+    queryKey: ['home-feed', areaId],
+    enabled: Boolean(areaId),
+    queryFn: async () => unwrap(await supabase.rpc('home_feed', { p_service_area_id: areaId })) as HomeFeed,
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
 export function usePublicPromotions() {
   return useQuery({
     queryKey: ['promotions', 'public'],

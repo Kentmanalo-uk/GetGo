@@ -13,7 +13,8 @@ import { cx } from '@/components/ui/cx';
 import { customerStatusLabel } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
 import { CATEGORY_LABELS, FOOD_CATEGORIES, SHOP_CATEGORIES, type MerchantCategory, type Promotion, type Storefront } from '@/types/models';
-import { useMyOrders, usePublicPromotions, useStorefronts } from './api';
+import { useHomeFeed, useMyOrders, usePublicPromotions, useStorefronts } from './api';
+import { ItemSection, StoreRow } from './homeSections';
 import { StoreEntry } from './storeDisplay';
 
 type Filter = 'all' | 'food' | 'shops' | MerchantCategory;
@@ -153,7 +154,7 @@ function OrderAgain({ stores }: { stores: Storefront[] }) {
       <SectionHeading id="again-heading" title="Order again" />
       <div className="divide-y divide-line sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-8 sm:divide-y-0 lg:grid-cols-4">
         {again.map((s) => (
-          <StoreEntry key={s.id} store={s} />
+          <StoreEntry key={s.id} store={s} showState={false} />
         ))}
       </div>
     </section>
@@ -164,8 +165,25 @@ function StoreGrid({ stores }: { stores: Storefront[] }) {
   return (
     <div className="divide-y divide-line sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-8 sm:divide-y-0 lg:grid-cols-3 xl:grid-cols-4">
       {stores.map((s) => (
-        <StoreEntry key={s.id} store={s} />
+        <StoreEntry key={s.id} store={s} showState={false} />
       ))}
+    </div>
+  );
+}
+
+function ItemsSkeleton() {
+  return (
+    <div className="space-y-3" role="status" aria-label="Loading items">
+      <Skeleton className="h-5 w-40" />
+      <div className="flex gap-3 overflow-hidden">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="w-36 shrink-0 space-y-2 sm:w-44">
+            <Skeleton className="aspect-square w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/3" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -192,6 +210,10 @@ export default function HomePage() {
   const [filter, setFilter] = useState<Filter>('all');
   const [pickArea, setPickArea] = useState(false);
   const stores = useStorefronts(loc.area?.id ?? null);
+  const feed = useHomeFeed(loc.area?.id ?? null);
+  /** The Food / Shops shortcuts and category tabs filter items and stores alike. */
+  const matches = ({ merchant_category: c }: { merchant_category: MerchantCategory }) =>
+    filter === 'all' || (filter === 'food' ? FOOD_CATEGORIES.includes(c) : filter === 'shops' ? SHOP_CATEGORIES.includes(c) : c === filter);
 
   const filtered = useMemo(() => {
     const list = stores.data ?? [];
@@ -231,6 +253,18 @@ export default function HomePage() {
       ) : (
         <>
           <Promotions />
+          {feed.isPending ? (
+            <ItemsSkeleton />
+          ) : (
+            feed.data && (
+              <>
+                <ItemSection id="popular-heading" title={`Popular in ${loc.area?.name ?? 'your area'}`} items={feed.data.popular.filter(matches)} />
+                <ItemSection id="meals-heading" title="Meals and snacks" items={feed.data.meals.filter(matches)} />
+                <ItemSection id="essentials-heading" title="Groceries and essentials" items={feed.data.essentials.filter(matches)} />
+                <StoreRow id="new-stores-heading" title="New on GETGO" stores={feed.data.new_stores.filter((s) => matches({ merchant_category: s.category }))} />
+              </>
+            )
+          )}
           {stores.data && <OrderAgain stores={stores.data} />}
 
           <section aria-labelledby="stores-heading" className="space-y-4">
@@ -267,17 +301,8 @@ export default function HomePage() {
                 {stores.data?.length ? 'Try another category.' : 'We’re onboarding local partners. Check back soon.'}
               </EmptyState>
             ) : (
-              <div className="space-y-10">
-                {open.length > 0 && <StoreGrid stores={open} />}
-                {later.length > 0 && (
-                  <div>
-                    <h2 className="mb-2 text-heading font-semibold text-ink-2">
-                      {open.length ? 'Closed for now' : 'All stores are closed right now'}
-                    </h2>
-                    <StoreGrid stores={later} />
-                  </div>
-                )}
-              </div>
+              // Open stores first; whether a store can order right now is shown on its page.
+              <StoreGrid stores={[...open, ...later]} />
             )}
           </section>
         </>

@@ -49,9 +49,13 @@ export function StoreMeta({ store, className }: { store: Storefront; className?:
  * A store in a listing: a compact row with a thumbnail on phones, a
  * cover-led tile in multi-column grids on larger screens.
  */
-export function StoreEntry({ store }: { store: Storefront }) {
-  const stateText = storeStateText(store);
-  const closed = store.state !== 'open';
+/**
+ * `showState` is off on the home page: whether a store can take orders right
+ * now is shown once the customer opens the store or an item.
+ */
+export function StoreEntry({ store, showState = true }: { store: Storefront; showState?: boolean }) {
+  const stateText = showState ? storeStateText(store) : null;
+  const closed = showState && store.state !== 'open';
   return (
     <Link to={`/stores/${store.slug}`} className="group flex gap-4 py-3 sm:block sm:py-0">
       <div className={cx('relative shrink-0 overflow-hidden rounded-media', closed && 'opacity-60')}>
