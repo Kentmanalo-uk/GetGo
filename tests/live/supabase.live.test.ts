@@ -552,4 +552,25 @@ describe.skipIf(!run)('live Supabase connections', () => {
     const products = ok(await signup.from('products').select('name, is_available').eq('merchant_id', result.merchant_id), 'owner sees admin edits');
     expect(products).toEqual([{ name: 'E2E Rice 1kg', is_available: false }]);
   });
+
+  test('barangay delivery prices apply at checkout', async () => {
+    // The customer's address barangay is "Lerma" (typed, so matched by name).
+    ok(
+      await a.db.rpc('set_barangay_fees', {
+        p_service_area_id: areaId,
+        p_fees: [{ barangay_code: '175203999', barangay_name: 'Lerma', delivery_fee_minor: 2500 }],
+      }),
+      'set barangay fees',
+    );
+    expect((await owner.db.rpc('set_barangay_fees', { p_service_area_id: areaId, p_fees: [] })).error?.code).toBe('42501');
+    ok(await customer.db.rpc('cart_add_item', { p_product_id: productId, p_variant_id: regularId, p_options: [{ option_value_id: drinkTea, quantity: 1 }], p_quantity: 1 }), 'add');
+    const quote = ok(await customer.db.rpc('quote_checkout', { p_merchant_id: merchantId, p_address_id: addressId, p_promo_code: null }), 'quote') as { delivery_fee_minor: number };
+    expect(quote.delivery_fee_minor).toBe(2500);
+    const front = ok(await anon.from('storefronts').select('delivery_fee_from_minor, delivery_fee_varies').eq('id', merchantId).single(), 'storefront fee') as {
+      delivery_fee_from_minor: number;
+      delivery_fee_varies: boolean;
+    };
+    expect(front).toEqual({ delivery_fee_from_minor: 2500, delivery_fee_varies: true });
+    ok(await customer.db.rpc('cart_clear', { p_merchant_id: merchantId }), 'clear cart');
+  });
 });

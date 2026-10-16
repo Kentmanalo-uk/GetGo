@@ -14,6 +14,7 @@ import { usePsgcMunicipalities, usePsgcProvinces } from '@/lib/psgc';
 import type { ServiceArea } from '@/types/models';
 import { useAllServiceAreas, useDeleteServiceArea, usePermissions, useSaveServiceArea } from './api';
 import { DataTable, ListSkeleton, RoleNote } from './ui';
+import { BarangayFeesEditor } from './BarangayFeesEditor';
 
 const peso = z
   .string()
@@ -159,7 +160,7 @@ function AreaForm({ area, onDone }: { area: ServiceArea | null; onDone: () => vo
         <Field label="Province name" error={errors.province?.message}>
           {(p) => <Input {...p} {...form.register('province')} />}
         </Field>
-        <Field label="Delivery fee" error={errors.delivery_fee?.message}>
+        <Field label="Default delivery fee" error={errors.delivery_fee?.message} hint="For barangays without their own price.">
           {(p) => <Input {...p} prefix="₱" inputMode="decimal" {...form.register('delivery_fee')} />}
         </Field>
         <Field label="Service fee" error={errors.service_fee?.message} hint="Per order. Use 0 for none.">
@@ -228,6 +229,7 @@ export default function AreasPage() {
   const perms = usePermissions();
   const areas = useAllServiceAreas();
   const [editing, setEditing] = useState<ServiceArea | 'new' | null>(null);
+  const [pricing, setPricing] = useState<ServiceArea | null>(null);
 
   const smallOrder = (a: ServiceArea) =>
     a.small_order_threshold_minor && a.small_order_fee_minor > 0
@@ -271,7 +273,7 @@ export default function AreasPage() {
               ),
             },
             { header: 'Status', cell: (a) => <StatusText tone={a.is_active ? 'done' : 'muted'}>{a.is_active ? 'Open' : 'Off'}</StatusText> },
-            { header: 'Delivery fee', align: 'right', cell: (a) => formatMoney(a.delivery_fee_minor) },
+            { header: 'Default delivery', align: 'right', cell: (a) => formatMoney(a.delivery_fee_minor) },
             { header: 'Service fee', align: 'right', cell: (a) => formatMoney(a.service_fee_minor) },
             { header: 'Small-order fee', align: 'right', cell: smallOrder },
             { header: 'Typical time', align: 'right', cell: (a) => (a.typical_delivery_minutes ? `${a.typical_delivery_minutes} min` : '—') },
@@ -280,9 +282,14 @@ export default function AreasPage() {
               align: 'right',
               cell: (a) =>
                 perms.canConfigure ? (
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(a)}>
-                    Edit
-                  </Button>
+                  <span className="flex justify-end gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => setPricing(a)}>
+                      Barangay prices
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(a)}>
+                      Edit
+                    </Button>
+                  </span>
                 ) : null,
             },
           ]}
@@ -302,9 +309,14 @@ export default function AreasPage() {
                 {a.typical_delivery_minutes ? ` · ~${a.typical_delivery_minutes} min` : ''}
               </p>
               {perms.canConfigure && (
-                <Button size="sm" variant="secondary" onClick={() => setEditing(a)}>
-                  Edit
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setPricing(a)}>
+                    Barangay prices
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setEditing(a)}>
+                    Edit
+                  </Button>
+                </div>
               )}
             </div>
           )}
@@ -313,6 +325,10 @@ export default function AreasPage() {
 
       <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing && editing !== 'new' ? `Edit ${editing.name}` : 'Add area'} size="lg">
         {editing !== null && <AreaForm key={editing === 'new' ? 'new' : editing.id} area={editing === 'new' ? null : editing} onDone={() => setEditing(null)} />}
+      </Sheet>
+
+      <Sheet open={pricing !== null} onClose={() => setPricing(null)} title={pricing ? `Delivery prices in ${pricing.name}` : ''} size="lg">
+        {pricing && <BarangayFeesEditor key={pricing.id} area={pricing} onDone={() => setPricing(null)} />}
       </Sheet>
     </div>
   );

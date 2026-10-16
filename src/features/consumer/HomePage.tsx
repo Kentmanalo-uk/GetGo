@@ -285,9 +285,9 @@ export default function HomePage() {
 
       {loc.ready && loc.area && (
         <p className="text-small text-ink-3">
-          Orders in {loc.area.name}: {formatMoney(loc.area.delivery_fee_minor)} delivery
-          {loc.area.service_fee_minor > 0 && ` + ${formatMoney(loc.area.service_fee_minor)} service fee`}. Every fee is shown before you
-          place your order.
+          Delivery in {loc.area.name} is priced by barangay
+          {loc.area.service_fee_minor > 0 && `, plus a ${formatMoney(loc.area.service_fee_minor)} service fee`}. Your exact fee is shown at
+          checkout before you place your order.
         </p>
       )}
       <AddressSheet open={pickArea} onClose={() => setPickArea(false)} />

@@ -21,7 +21,7 @@ export function StoreMeta({ store, className }: { store: Storefront; className?:
   const parts = [
     CATEGORY_LABELS[store.category],
     storeEta(store),
-    `${formatMoney(store.delivery_fee_minor)} delivery`,
+    `${store.delivery_fee_varies ? 'from ' : ''}${formatMoney(store.delivery_fee_from_minor)} delivery`,
   ].filter((p): p is string => Boolean(p));
   return (
     <p className={cx('flex flex-wrap items-center gap-x-1.5 text-small text-ink-3', className)}>

@@ -79,6 +79,9 @@ export interface Storefront {
   next_open_at: string | null;
   rating_avg: string | null;
   rating_count: number;
+  /** Lowest delivery fee in the store's area (barangay prices can differ). */
+  delivery_fee_from_minor: number;
+  delivery_fee_varies: boolean;
 }
 
 export interface Merchant {

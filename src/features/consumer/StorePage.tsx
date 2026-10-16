@@ -66,7 +66,9 @@ function StoreInfoSheet({ store, open, onClose }: { store: Storefront; open: boo
           </p>
         </section>
         <dl className="text-small">
-          <DataRow label="Delivery fee">{formatMoney(store.delivery_fee_minor)}</DataRow>
+          <DataRow label="Delivery fee">
+            {store.delivery_fee_varies ? `from ${formatMoney(store.delivery_fee_from_minor)} — depends on your barangay` : formatMoney(store.delivery_fee_minor)}
+          </DataRow>
           {store.service_fee_minor > 0 && <DataRow label="Service fee">{formatMoney(store.service_fee_minor)}</DataRow>}
           <DataRow label="Minimum order">{store.min_order_minor > 0 ? formatMoney(store.min_order_minor) : 'None'}</DataRow>
         </dl>
