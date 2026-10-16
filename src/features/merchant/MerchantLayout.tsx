@@ -9,6 +9,7 @@ import { PageLoading } from '@/components/ui/Feedback';
 import { StatusText, StoreMark } from '@/components/ui/Display';
 import { Sheet } from '@/components/ui/Sheet';
 import { cx } from '@/components/ui/cx';
+import { ICON_GRADIENT } from '@/components/IconGradient';
 import type { MemberRole } from '@/types/models';
 import { useStoreState } from './api';
 
@@ -197,9 +198,13 @@ export function MerchantLayout() {
           <ul className="grid h-16 grid-cols-3">
             {NAV.map(({ to, label, icon: Icon, end }) => (
               <li key={to}>
-                <NavLink to={to} end={end} className={({ isActive }) => cx('flex h-full flex-col items-center justify-center gap-1 text-micro font-semibold', isActive ? 'text-ink' : 'text-ink-4')}>
-                  <Icon className="size-[22px]" aria-hidden />
-                  {label}
+                <NavLink to={to} end={end} className={({ isActive }) => cx('flex h-full flex-col items-center justify-center gap-1 text-micro font-semibold', isActive ? 'text-accent-ink' : 'text-ink-4')}>
+                  {({ isActive }) => (
+                    <>
+                      <Icon className={cx('size-6', isActive ? ICON_GRADIENT : 'text-ink-4')} weight="fill" aria-hidden />
+                      {label}
+                    </>
+                  )}
                 </NavLink>
               </li>
             ))}

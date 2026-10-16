@@ -83,15 +83,18 @@ function ServiceShortcuts({ filter, onFilter }: { filter: Filter; onFilter: (f: 
               aria-pressed={available ? active : undefined}
               className="group flex flex-col items-center gap-1 py-1 sm:flex-row sm:gap-2.5"
             >
+              {/* Filled pink-gradient icons; the selected filter is marked on its label. */}
               <Icon
-                className={cx(
-                  'size-10 transition-transform group-hover:scale-105 motion-reduce:transition-none sm:size-9',
-                  available ? ICON_GRADIENT : 'text-ink-4',
-                )}
-                weight={active ? 'fill' : 'duotone'}
+                className={cx('size-10 transition-transform group-hover:scale-105 motion-reduce:transition-none sm:size-9', ICON_GRADIENT)}
+                weight="fill"
                 aria-hidden
               />
-              <span className={cx('text-small font-semibold', !available ? 'text-ink-4' : active ? 'text-accent-ink' : 'text-ink')}>
+              <span
+                className={cx(
+                  'text-small font-semibold',
+                  !available ? 'text-ink-4' : active ? 'text-accent-ink underline decoration-2 underline-offset-4' : 'text-ink',
+                )}
+              >
                 {label}
                 {!available && <span className="sr-only"> (not yet available)</span>}
               </span>

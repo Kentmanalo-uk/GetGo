@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useMatches, useNavigate } from 'react-router';
 import { Bell, ChevronDown, Compass, Home, Receipt, Search, ShoppingBag, User } from '@/components/icons';
 import { Logo } from '@/components/Logo';
 import { cx } from '@/components/ui/cx';
+import { ICON_GRADIENT } from '@/components/IconGradient';
 import { ButtonLink } from '@/components/ui/Button';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useCarts } from '@/features/consumer/api';
@@ -166,13 +167,14 @@ function BottomNav() {
               to={to}
               end={end}
               className={({ isActive }) =>
-                cx('flex h-full flex-col items-center justify-center gap-1 text-micro font-semibold', isActive ? 'text-ink' : 'text-ink-4')
+                cx('flex h-full flex-col items-center justify-center gap-1 text-micro font-semibold', isActive ? 'text-accent-ink' : 'text-ink-4')
               }
             >
               {({ isActive }) => (
                 <>
                   <span className="relative">
-                    <Icon className="size-[22px]" weight={isActive ? 'fill' : 'regular'} aria-hidden />
+                    {/* Always filled: grey when inactive, pink gradient when active. */}
+                    <Icon className={cx('size-6', isActive ? ICON_GRADIENT : 'text-ink-4')} weight="fill" aria-hidden />
                     {badge ? (
                       <span className="tabular absolute -top-1.5 -right-2.5 min-w-4 rounded bg-accent px-1 text-center text-[10px] leading-4 text-ink">
                         {badge}
