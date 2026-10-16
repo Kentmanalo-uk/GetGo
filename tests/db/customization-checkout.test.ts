@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from 'vitest';
 import { TestDb } from './harness';
-import { createCustomer, createPlatform, createStore, idemKey, placeOrder, quote, sel, type Store, type World } from './fixtures';
+import { acceptAndPay, createCustomer, createPlatform, createRider, createStore, gcashRef, idemKey, placeOrder, quote, sel, type Store, type World } from './fixtures';
 
 describe('configuration pricing (server authority)', () => {
   let db: TestDb;
@@ -108,11 +108,12 @@ describe('checkout validation', () => {
     const after = await quote(db, customer.id, store.merchantId, customer.addressId);
     expect(after.items[0]).toMatchObject({ price_changed: true, previous_unit_price_minor: 12000, unit_price_minor: 13000 });
 
-    const err = await db.expectError(
-      customer.id,
-      `select place_order($1, 'delivery', $2, 'cod', null, null, $3, $4)`,
-      [store.merchantId, customer.addressId, before.total_minor, idemKey()],
-    );
+    const err = await db.expectError(customer.id, `select place_order($1, $2, null, null, $3, $4)`, [
+      store.merchantId,
+      customer.addressId,
+      before.total_minor,
+      idemKey(),
+    ]);
     expect(err.hint).toBe('total_changed');
     await db.sql(`update product_variants set price_minor = 12000 where id = $1`, [store.regularId]);
   });
@@ -120,21 +121,15 @@ describe('checkout validation', () => {
   test('client-submitted totals cannot lower the price', async () => {
     const customer = await createCustomer(db, world, 'cheat@example.test');
     await addMeal(customer.id);
-    const err = await db.expectError(
-      customer.id,
-      `select place_order($1, 'delivery', $2, 'cod', null, null, 100, $3)`,
-      [store.merchantId, customer.addressId, idemKey()],
-    );
+    const err = await db.expectError(customer.id, `select place_order($1, $2, null, null, 100, $3)`, [store.merchantId, customer.addressId, idemKey()]);
     expect(err.hint).toBe('total_changed');
   });
 
-  test('closed, paused and sold-out states block checkout', async () => {
+  test('closed, temporarily closed and sold-out states block checkout', async () => {
     const customer = await createCustomer(db, world, 'closed@example.test');
     await addMeal(customer.id);
 
-    await db.sql(`insert into store_hour_exceptions (merchant_id, date, is_closed) values ($1, (now() at time zone 'Asia/Manila')::date, true)`, [
-      store.merchantId,
-    ]);
+    await db.sql(`insert into store_hour_exceptions (merchant_id, date, is_closed) values ($1, (now() at time zone 'Asia/Manila')::date, true)`, [store.merchantId]);
     let q = await quote(db, customer.id, store.merchantId, customer.addressId);
     expect(q.issues.map((i: any) => i.code)).toContain('store_closed');
     expect(q.can_checkout).toBe(false);
@@ -151,12 +146,7 @@ describe('checkout validation', () => {
     await db.as(store.owner, `select set_product_availability($1, false)`, [store.productId]);
     q = await quote(db, customer.id, store.merchantId, customer.addressId);
     expect(q.items[0].error_code).toBe('product_sold_out');
-    const err = await db.expectError(customer.id, `select place_order($1, 'delivery', $2, 'cod', null, null, $3, $4)`, [
-      store.merchantId,
-      customer.addressId,
-      q.total_minor,
-      idemKey(),
-    ]);
+    const err = await db.expectError(customer.id, `select place_order($1, $2, null, null, $3, $4)`, [store.merchantId, customer.addressId, q.total_minor, idemKey()]);
     expect(err.message).toBe('Bicol Express Rice Meal is sold out.');
     await db.as(store.owner, `select set_product_availability($1, true)`, [store.productId]);
   });
@@ -170,9 +160,11 @@ describe('checkout validation', () => {
     const other = await createCustomer(db, world, 'neighbor@example.test');
     const q2 = await quote(db, outside.id, store.merchantId, other.addressId);
     expect(q2.issues[0].code).toBe('address_invalid');
+    const q3 = await quote(db, outside.id, store.merchantId, null);
+    expect(q3.issues[0].code).toBe('address_required');
   });
 
-  test('minimum order, small-order fee and pickup rules', async () => {
+  test('minimum order and small-order fee', async () => {
     const customer = await createCustomer(db, world, 'min@example.test');
     await db.sql(`update merchants set min_order_minor = 20000 where id = $1`, [store.merchantId]);
     await addMeal(customer.id);
@@ -184,34 +176,28 @@ describe('checkout validation', () => {
     q = await quote(db, customer.id, store.merchantId, customer.addressId);
     expect(q).toMatchObject({ subtotal_minor: 12000, small_order_fee_minor: 1500, delivery_fee_minor: 4900, total_minor: 12000 + 1500 + 4900 + 1000 });
     await db.sql(`update service_areas set small_order_threshold_minor = null where id = $1`, [world.areaId]);
-
-    // Pickup has no delivery fee and needs a phone number on the profile.
-    q = await quote(db, customer.id, store.merchantId, null);
-    expect(q.delivery_fee_minor).toBe(0);
-    await db.sql(`update profiles set phone = null where id = $1`, [customer.id]);
-    const err = await db.expectError(customer.id, `select place_order($1, 'pickup', null, 'cod', null, null, $2, $3)`, [
-      store.merchantId,
-      q.total_minor,
-      idemKey(),
-    ]);
-    expect(err.hint).toBe('phone_required');
   });
 
-  test('promotions: limits, eligibility and release on cancellation', async () => {
+  test('promotions reduce fees only, respect limits, and are released on cancellation', async () => {
     await db.as(world.admin, `insert into promotions (code, title, discount_type, value, max_discount_minor, min_subtotal_minor, per_user_limit, usage_limit)
       values ('SAVE10', '10% off', 'percent', 1000, 5000, 10000, 1, 100)`);
+    await db.as(world.admin, `insert into promotions (code, title, discount_type, value) values ('FREEDEL', 'Free delivery', 'free_delivery', 0)`);
     const customer = await createCustomer(db, world, 'promo@example.test');
     await addMeal(customer.id, 2);
     let q = await quote(db, customer.id, store.merchantId, customer.addressId, 'save10');
     expect(q.promo).toMatchObject({ applied: true, code: 'SAVE10' });
     expect(q.discount_minor).toBe(2400);
-    const orderId = await placeOrder(db, customer.id, store.merchantId, customer.addressId, { promo: 'SAVE10' });
+    // The rider still pays the store's full prices.
+    expect(q.subtotal_minor).toBe(24000);
 
+    q = await quote(db, customer.id, store.merchantId, customer.addressId, 'FREEDEL');
+    expect(q.discount_minor).toBe(4900);
+
+    const orderId = await placeOrder(db, customer.id, store.merchantId, customer.addressId, { promo: 'SAVE10' });
     await addMeal(customer.id, 2);
     q = await quote(db, customer.id, store.merchantId, customer.addressId, 'SAVE10');
     expect(q.promo).toMatchObject({ applied: false, message: 'You have already used this promo code.' });
 
-    // Cancelling releases the redemption.
     await db.as(customer.id, `select update_order_status($1, 'cancelled')`, [orderId]);
     q = await quote(db, customer.id, store.merchantId, customer.addressId, 'SAVE10');
     expect(q.promo.applied).toBe(true);
@@ -220,97 +206,112 @@ describe('checkout validation', () => {
     expect(q.promo).toMatchObject({ applied: false, message: 'This promo code is not valid.' });
     expect(q.discount_minor).toBe(0);
   });
-
-  test('online payment is refused while the platform has it disabled', async () => {
-    const customer = await createCustomer(db, world, 'online@example.test');
-    await addMeal(customer.id);
-    const q = await quote(db, customer.id, store.merchantId, customer.addressId);
-    expect(q.online_payments_enabled).toBe(false);
-    const err = await db.expectError(customer.id, `select place_order($1, 'delivery', $2, 'online', null, null, $3, $4)`, [
-      store.merchantId,
-      customer.addressId,
-      q.total_minor,
-      idemKey(),
-    ]);
-    expect(err.hint).toBe('payment_unavailable');
-  });
 });
 
-describe('order lifecycle permissions', () => {
+describe('order lifecycle and GCash payment rules', () => {
   let db: TestDb;
   let world: World;
   let store: Store;
+  let rider: string;
+  let otherRider: string;
 
   beforeAll(async () => {
     db = await TestDb.create();
     world = await createPlatform(db);
     store = await createStore(db, world, 'owner@example.test');
+    rider = await createRider(db, world, 'rider-a@example.test');
+    otherRider = await createRider(db, world, 'rider-b@example.test');
   });
 
-  const newOrder = async (email: string, pickup = false) => {
+  const newOrder = async (email: string) => {
     const customer = await createCustomer(db, world, email);
     await db.as(customer.id, `select cart_add_item($1, $2, $3, 1)`, [store.productId, store.regularId, sel(store.options['Iced tea'])]);
-    const orderId = await placeOrder(db, customer.id, store.merchantId, pickup ? null : customer.addressId);
+    const orderId = await placeOrder(db, customer.id, store.merchantId, customer.addressId);
     return { customer, orderId };
   };
 
-  test('customers can cancel only before the store accepts', async () => {
-    const { customer, orderId } = await newOrder('cancel@example.test');
-    const accept = await db.expectError(customer.id, `select update_order_status($1, 'accepted')`, [orderId]);
-    expect(accept.code).toBe('42501');
-    await db.as(store.owner, `select update_order_status($1, 'accepted')`, [orderId]);
-    const late = await db.expectError(customer.id, `select update_order_status($1, 'cancelled')`, [orderId]);
-    expect(late.code).toBe('42501');
+  test('only one rider can accept an order', async () => {
+    const { orderId } = await newOrder('race@example.test');
+    await db.as(rider, `select rider_accept_order($1)`, [orderId]);
+    // Once accepted, the order is no longer visible to other riders.
+    expect((await db.expectError(otherRider, `select rider_accept_order($1)`, [orderId])).hint).toBe('already_taken');
+    expect(await db.as(otherRider, `select id from orders where id = $1`, [orderId])).toHaveLength(0);
   });
 
-  test('rejections require a reason and notify the customer', async () => {
-    const { customer, orderId } = await newOrder('reject@example.test');
-    const noReason = await db.expectError(store.owner, `select update_order_status($1, 'rejected')`, [orderId]);
-    expect(noReason.hint).toBe('reason_required');
-    await db.as(store.owner, `select update_order_status($1, 'rejected', 'Out of pork today')`, [orderId]);
-    const [n] = await db.as<{ title: string; body: string }>(customer.id, `select title, body from notifications where kind = 'order.rejected'`);
-    expect(n).toMatchObject({ body: 'Out of pork today' });
-    const [o] = await db.as<{ payment_status: string }>(customer.id, `select payment_status from orders where id = $1`, [orderId]);
-    expect(o.payment_status).toBe('cancelled');
+  test('payment can only be sent after acceptance, and references are single-use', async () => {
+    const { customer, orderId } = await newOrder('pay-early@example.test');
+    expect((await db.expectError(customer.id, `select submit_gcash_payment($1, $2, null)`, [orderId, gcashRef()])).hint).toBe('invalid_transition');
+    await db.as(rider, `select rider_accept_order($1)`, [orderId]);
+    const ref = gcashRef();
+    await db.as(customer.id, `select submit_gcash_payment($1, $2, null)`, [orderId, ref]);
+
+    const second = await newOrder('pay-reuse@example.test');
+    await db.as(rider, `select rider_accept_order($1)`, [second.orderId]);
+    expect((await db.expectError(second.customer.id, `select submit_gcash_payment($1, $2, null)`, [second.orderId, ref])).hint).toBe('duplicate_reference');
   });
 
-  test('pickup orders complete at the counter and cannot go out for delivery', async () => {
-    const { orderId } = await newOrder('pickup@example.test', true);
-    for (const s of ['accepted', 'preparing', 'ready']) {
-      await db.as(store.owner, `select update_order_status($1, $2)`, [orderId, s]);
-    }
-    const wrong = await db.expectError(store.owner, `select update_order_status($1, 'out_for_delivery')`, [orderId]);
-    expect(wrong.hint).toBe('invalid_transition');
-    await db.as(store.owner, `select update_order_status($1, 'completed')`, [orderId]);
+  test('only the assigned rider confirms payments; customers cannot confirm their own', async () => {
+    const { customer, orderId } = await newOrder('confirm@example.test');
+    await db.as(rider, `select rider_accept_order($1)`, [orderId]);
+    await db.as(customer.id, `select submit_gcash_payment($1, $2, null)`, [orderId, gcashRef()]);
+    expect((await db.expectError(customer.id, `select confirm_gcash_payment($1, true)`, [orderId])).hint).toBe('order_not_found');
+    expect((await db.expectError(otherRider, `select confirm_gcash_payment($1, true)`, [orderId])).hint).toBe('order_not_found');
+    expect((await db.expectError(rider, `select update_order_status($1, 'out_for_delivery')`, [orderId])).hint).toBe('invalid_transition');
+    await db.as(rider, `select confirm_gcash_payment($1, true)`, [orderId]);
+    const [o] = await db.as<{ status: string; payment_status: string }>(customer.id, `select status, payment_status from orders where id = $1`, [orderId]);
+    expect(o).toEqual({ status: 'buying', payment_status: 'paid' });
   });
 
-  test('assigned riders handle delivery; the store then cannot', async () => {
-    const { orderId } = await newOrder('rider-order@example.test');
-    const rider = await db.createUser('rider@example.test', 'Rico Rider');
-    await db.as(world.admin, `select create_rider('rider@example.test', 'Rico Rider', '09190000000', 'motorcycle', 'ABC 123', $1)`, [world.areaId]);
-    await db.as(store.owner, `select update_order_status($1, 'accepted')`, [orderId]);
+  test('a rider can release an unpaid order back to the queue', async () => {
+    const { customer, orderId } = await newOrder('release@example.test');
+    await db.as(rider, `select rider_accept_order($1)`, [orderId]);
+    await db.as(rider, `select rider_release_order($1, 'Motorcycle trouble')`, [orderId]);
+    const [o] = await db.as<{ status: string }>(customer.id, `select status from orders where id = $1`, [orderId]);
+    expect(o.status).toBe('pending');
+    const [p] = await db.as<{ payee_number: string | null }>(customer.id, `select payee_number from payments where order_id = $1`, [orderId]);
+    expect(p.payee_number).toBeNull();
+    await db.as(otherRider, `select rider_accept_order($1)`, [orderId]);
+    await db.as(customer.id, `select submit_gcash_payment($1, $2, null)`, [orderId, gcashRef()]);
+    expect((await db.expectError(otherRider, `select rider_release_order($1, null)`, [orderId])).hint).toBe('invalid_transition');
+  });
+
+  test('customers cancel freely before paying; afterwards cancellation needs rider or staff and opens a refund', async () => {
+    const early = await newOrder('cancel-early@example.test');
+    await db.as(rider, `select rider_accept_order($1)`, [early.orderId]);
+    await db.as(early.customer.id, `select update_order_status($1, 'cancelled', 'Changed my mind')`, [early.orderId]);
+    const [p] = await db.as<{ status: string }>(early.customer.id, `select status from payments where order_id = $1`, [early.orderId]);
+    expect(p.status).toBe('cancelled');
+
+    const paid = await newOrder('cancel-paid@example.test');
+    await acceptAndPay(db, paid.orderId, paid.customer.id, rider);
+    expect((await db.expectError(rider, `select update_order_status($1, 'cancelled')`, [paid.orderId])).hint).toBe('reason_required');
+    await db.as(rider, `select update_order_status($1, 'cancelled', 'Store ran out of pork')`, [paid.orderId]);
+    const refunds = await db.as<{ amount_minor: number; status: string }>(paid.customer.id, `select amount_minor, status from refunds where order_id = $1`, [paid.orderId]);
+    expect(refunds).toEqual([{ amount_minor: 12000 + 4900 + 1000, status: 'requested' }]);
+
+    const [{ id: refundId }] = await db.as<{ id: string }>(world.finance, `select id from refunds where order_id = $1`, [paid.orderId]);
+    expect((await db.expectError(world.support, `select review_refund($1, 'approve')`, [refundId])).code).toBe('42501');
+    await db.as(world.finance, `select review_refund($1, 'approve')`, [refundId]);
+    expect((await db.expectError(world.finance, `select review_refund($1, 'mark_processed', '')`, [refundId])).hint).toBe('reference_required');
+    await db.as(world.finance, `select review_refund($1, 'mark_processed', '5012345678901')`, [refundId]);
+    const [o] = await db.as<{ payment_status: string }>(paid.customer.id, `select payment_status from orders where id = $1`, [paid.orderId]);
+    expect(o.payment_status).toBe('refunded');
+  });
+
+  test('staff can assign riders before payment and cancel with a reason (audited)', async () => {
+    const { orderId } = await newOrder('staff@example.test');
+    const farRider = await createRider(db, world, 'far@example.test', world.otherAreaId);
+    expect((await db.expectError(world.support, `select assign_rider($1, $2)`, [orderId, farRider])).hint).toBe('rider_unavailable');
     await db.as(world.support, `select assign_rider($1, $2)`, [orderId, rider]);
-
-    // The rider can see the order (with pickup details) once assigned.
-    const [visible] = await db.as<{ merchant_name: string; pickup_address: any }>(rider, `select merchant_name, pickup_address from orders where id = $1`, [orderId]);
-    expect(visible.pickup_address.line1).toBe('12 Elias Angeles St');
-
-    const early = await db.expectError(rider, `select update_order_status($1, 'out_for_delivery')`, [orderId]);
-    expect(early.hint).toBe('invalid_transition');
-    await db.as(store.owner, `select update_order_status($1, 'preparing')`, [orderId]);
-    await db.as(store.owner, `select update_order_status($1, 'ready')`, [orderId]);
-    const storeDelivers = await db.expectError(store.owner, `select update_order_status($1, 'out_for_delivery')`, [orderId]);
-    expect(storeDelivers.code).toBe('42501');
-    await db.as(rider, `select update_order_status($1, 'out_for_delivery')`, [orderId]);
-    await db.as(rider, `select update_order_status($1, 'completed')`, [orderId]);
-    const [a] = await db.as<{ status: string }>(rider, `select status from assignments where order_id = $1`, [orderId]);
-    expect(a.status).toBe('completed');
-  });
-
-  test('admin overrides are audited', async () => {
-    const { orderId } = await newOrder('override@example.test');
+    expect((await db.expectError(world.admin, `select update_order_status($1, 'cancelled')`, [orderId])).hint).toBe('reason_required');
     await db.as(world.admin, `select update_order_status($1, 'cancelled', 'Customer called support')`, [orderId]);
     const logs = await db.as<{ action: string }>(world.admin, `select action from audit_logs where entity_id = $1`, [orderId]);
-    expect(logs.map((l) => l.action)).toContain('order.status_changed');
+    expect(logs.map((l) => l.action)).toEqual(expect.arrayContaining(['order.rider_assigned', 'order.status_changed']));
+  });
+
+  test('stores have no part in orders', async () => {
+    const { orderId } = await newOrder('store-blind@example.test');
+    expect(await db.as(store.owner, `select id from orders where id = $1`, [orderId])).toHaveLength(0);
+    expect((await db.expectError(store.owner, `select update_order_status($1, 'cancelled', 'x')`, [orderId])).hint).toBe('order_not_found');
   });
 });

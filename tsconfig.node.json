@@ -17,5 +17,5 @@
     "paths": { "@/*": ["src/*"] },
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "tests", "supabase/functions/_shared/*.ts"]
+  "include": ["vite.config.ts", "vitest.config.ts", "tests"]
 }

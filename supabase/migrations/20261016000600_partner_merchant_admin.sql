@@ -36,8 +36,6 @@ begin
     v_missing := array_append(v_missing, ('Service area')::text);
   end if;
   if jsonb_array_length(v_app.hours) = 0 then v_missing := array_append(v_missing, ('Operating hours')::text); end if;
-  if v_app.prep_time_minutes is null then v_missing := array_append(v_missing, ('Preparation time')::text); end if;
-  if not (v_app.supports_delivery or v_app.supports_pickup) then v_missing := array_append(v_missing, ('Delivery or pickup')::text); end if;
   if jsonb_array_length(v_app.menu_items) = 0 then v_missing := array_append(v_missing, ('At least one menu item')::text); end if;
   foreach v_doc in array public.required_document_types() loop
     if not exists (select 1 from public.application_documents where application_id = p_application_id and doc_type = v_doc) then
@@ -100,7 +98,7 @@ $$;
 
 -- Admin review. p_decision: under_review | needs_changes | approved | rejected
 create or replace function public.review_partner_application(
-  p_application_id uuid, p_decision public.application_status, p_notes text default null, p_commission_bps int default null
+  p_application_id uuid, p_decision public.application_status, p_notes text default null
 )
 returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -137,10 +135,6 @@ begin
   end if;
 
   if p_decision = 'approved' then
-    if p_commission_bps is null or p_commission_bps not between 0 and 5000 then
-      raise exception 'Set the agreed commission rate before approving.' using errcode = 'P0001', hint = 'commission_required';
-    end if;
-
     v_base := coalesce(nullif(public.slugify(v_app.business_name), ''), 'store');
     v_slug := v_base;
     while exists (select 1 from public.merchants where slug = v_slug) loop
@@ -149,12 +143,9 @@ begin
     end loop;
 
     insert into public.merchants (slug, name, category, description, phone, address_line, barangay, city,
-      service_area_id, logo_path, cover_path, prep_time_minutes, supports_delivery, supports_pickup,
-      commission_bps, application_id)
+      service_area_id, logo_path, cover_path, application_id)
     values (v_slug, v_app.business_name, v_app.category, v_app.description, coalesce(v_app.business_phone, v_app.owner_phone),
-      v_app.address_line, v_app.barangay, v_app.city, v_app.service_area_id, v_app.logo_path, v_app.cover_path,
-      coalesce(v_app.prep_time_minutes, 20), v_app.supports_delivery, v_app.supports_pickup,
-      p_commission_bps, v_app.id)
+      v_app.address_line, v_app.barangay, v_app.city, v_app.service_area_id, v_app.logo_path, v_app.cover_path, v_app.id)
     returning id into v_merchant_id;
 
     insert into public.merchant_members (merchant_id, user_id, role) values (v_merchant_id, v_app.applicant_id, 'owner');
@@ -181,7 +172,7 @@ begin
     where id = p_application_id;
 
     perform public.notify(v_app.applicant_id, 'application.approved', 'Your GETGO partner application is approved',
-      'Finish setting up your store and publish it when you are ready.', '/merchant');
+      'Review your product list and publish your store when you are ready.', '/merchant');
   else
     update public.partner_applications
     set status = p_decision, review_notes = coalesce(v_notes, review_notes), reviewed_by = auth.uid(), reviewed_at = now()
@@ -195,7 +186,7 @@ begin
   end if;
 
   perform public.log_audit('application.' || p_decision, 'partner_application', p_application_id::text,
-    jsonb_build_object('notes', v_notes, 'commission_bps', p_commission_bps, 'merchant_id', v_merchant_id));
+    jsonb_build_object('notes', v_notes, 'merchant_id', v_merchant_id));
   return v_merchant_id;
 end $$;
 
@@ -257,40 +248,6 @@ begin
   insert into public.store_hours (merchant_id, weekday, opens_at, closes_at)
   select p_merchant_id, (h ->> 'weekday')::smallint, (h ->> 'opens')::time, (h ->> 'closes')::time
   from jsonb_array_elements(p_hours) h;
-end $$;
-
--- Team management (owners only).
-create or replace function public.add_merchant_member(p_merchant_id uuid, p_email text, p_role public.member_role)
-returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  v_user uuid;
-begin
-  if not public.is_merchant_member(p_merchant_id, array['owner']::public.member_role[]) then
-    raise exception 'Only the store owner can manage the team.' using errcode = '42501';
-  end if;
-  if p_role = 'owner' then
-    raise exception 'Ownership cannot be shared.' using errcode = 'P0001', hint = 'invalid_role';
-  end if;
-  select id into v_user from public.profiles where lower(email) = lower(trim(p_email));
-  if v_user is null then
-    raise exception 'No GETGO account uses this email. Ask them to sign up first.' using errcode = 'P0001', hint = 'user_not_found';
-  end if;
-  insert into public.merchant_members (merchant_id, user_id, role) values (p_merchant_id, v_user, p_role)
-  on conflict (merchant_id, user_id) do update set role = excluded.role
-  where public.merchant_members.role <> 'owner';
-  perform public.log_audit('member.added', 'merchant', p_merchant_id::text, jsonb_build_object('user_id', v_user, 'role', p_role));
-  perform public.notify(v_user, 'team.added', 'You were added to a store team', null, '/merchant');
-  return v_user;
-end $$;
-
-create or replace function public.remove_merchant_member(p_merchant_id uuid, p_user_id uuid)
-returns void language plpgsql security definer set search_path = public, pg_temp as $$
-begin
-  if not public.is_merchant_member(p_merchant_id, array['owner']::public.member_role[]) then
-    raise exception 'Only the store owner can manage the team.' using errcode = '42501';
-  end if;
-  delete from public.merchant_members where merchant_id = p_merchant_id and user_id = p_user_id and role <> 'owner';
-  perform public.log_audit('member.removed', 'merchant', p_merchant_id::text, jsonb_build_object('user_id', p_user_id));
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -498,38 +455,6 @@ begin
   delete from public.option_groups where id = p_group_id;
 end $$;
 
--- Sales summary for the merchant dashboard (Asia/Manila calendar days).
-create or replace function public.merchant_sales_summary(p_merchant_id uuid, p_from date, p_to date)
-returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
-declare
-  v_result jsonb;
-begin
-  if not public.is_merchant_member(p_merchant_id) and not public.is_staff() then
-    raise exception 'Not allowed.' using errcode = '42501';
-  end if;
-  select jsonb_build_object(
-    'completed_orders', count(*) filter (where status = 'completed'),
-    'cancelled_orders', count(*) filter (where status in ('cancelled', 'rejected')),
-    'gross_minor', coalesce(sum(subtotal_minor - merchant_discount_minor) filter (where status = 'completed'), 0),
-    'average_order_minor', coalesce(round(avg(subtotal_minor) filter (where status = 'completed'))::bigint, 0),
-    'daily', coalesce((
-      select jsonb_agg(jsonb_build_object('day', d.day, 'orders', d.orders, 'gross_minor', d.gross) order by d.day)
-      from (
-        select (completed_at at time zone 'Asia/Manila')::date as day, count(*) as orders,
-               sum(subtotal_minor - merchant_discount_minor) as gross
-        from public.orders
-        where merchant_id = p_merchant_id and status = 'completed'
-          and (completed_at at time zone 'Asia/Manila')::date between p_from and p_to
-        group by 1
-      ) d
-    ), '[]')
-  ) into v_result
-  from public.orders
-  where merchant_id = p_merchant_id
-    and (created_at at time zone 'Asia/Manila')::date between p_from and p_to;
-  return v_result;
-end $$;
-
 -- ---------------------------------------------------------------------------
 -- Admin operations
 -- ---------------------------------------------------------------------------
@@ -548,20 +473,6 @@ begin
   perform public.log_audit('merchant.status_changed', 'merchant', p_merchant_id::text,
     jsonb_build_object('status', p_status, 'reason', p_reason));
   perform public.notify_merchant(p_merchant_id, 'store.status', format('Store status changed to %s', p_status), p_reason, '/merchant/settings');
-end $$;
-
-create or replace function public.set_merchant_commission(p_merchant_id uuid, p_bps int)
-returns void language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  v_old int;
-begin
-  if not public.is_admin() then
-    raise exception 'Not allowed.' using errcode = '42501';
-  end if;
-  select commission_bps into v_old from public.merchants where id = p_merchant_id for update;
-  update public.merchants set commission_bps = p_bps where id = p_merchant_id;
-  perform public.log_audit('merchant.commission_changed', 'merchant', p_merchant_id::text,
-    jsonb_build_object('from', v_old, 'to', p_bps));
 end $$;
 
 create or replace function public.grant_role(p_email text, p_role public.app_role)
@@ -597,7 +508,8 @@ begin
 end $$;
 
 create or replace function public.create_rider(
-  p_email text, p_full_name text, p_phone text, p_vehicle public.vehicle_type, p_plate text, p_service_area_id uuid
+  p_email text, p_full_name text, p_phone text, p_vehicle public.vehicle_type, p_plate text, p_service_area_id uuid,
+  p_gcash_name text, p_gcash_number text
 )
 returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -610,10 +522,12 @@ begin
   if v_user is null then
     raise exception 'No GETGO account uses this email. Ask the rider to sign up first.' using errcode = 'P0001', hint = 'user_not_found';
   end if;
-  insert into public.rider_profiles (user_id, full_name, phone, vehicle_type, plate_number, service_area_id)
-  values (v_user, trim(p_full_name), trim(p_phone), p_vehicle, nullif(trim(p_plate), ''), p_service_area_id)
+  insert into public.rider_profiles (user_id, full_name, phone, vehicle_type, plate_number, service_area_id, gcash_name, gcash_number)
+  values (v_user, trim(p_full_name), trim(p_phone), p_vehicle, nullif(trim(p_plate), ''), p_service_area_id,
+    trim(p_gcash_name), regexp_replace(coalesce(p_gcash_number, ''), '[\s-]', '', 'g'))
   on conflict (user_id) do update set full_name = excluded.full_name, phone = excluded.phone,
-    vehicle_type = excluded.vehicle_type, plate_number = excluded.plate_number, service_area_id = excluded.service_area_id;
+    vehicle_type = excluded.vehicle_type, plate_number = excluded.plate_number, service_area_id = excluded.service_area_id,
+    gcash_name = excluded.gcash_name, gcash_number = excluded.gcash_number;
   insert into public.user_roles (user_id, role, granted_by) values (v_user, 'rider', auth.uid()) on conflict do nothing;
   perform public.log_audit('rider.saved', 'rider', v_user::text, jsonb_build_object('email', p_email));
   return v_user;
@@ -644,10 +558,9 @@ begin
   return jsonb_build_object(
     'applications_waiting', (select count(*) from public.partner_applications where status in ('submitted', 'under_review')),
     'orders_today', (select count(*) from public.orders where (created_at at time zone 'Asia/Manila')::date = v_today),
-    'orders_open', (select count(*) from public.orders where status in ('pending', 'accepted', 'preparing', 'ready', 'out_for_delivery')),
-    'orders_unassigned', (select count(*) from public.orders o where o.fulfillment = 'delivery'
-        and o.status in ('accepted', 'preparing', 'ready')
-        and not exists (select 1 from public.assignments a where a.order_id = o.id and a.status = 'active')),
+    'orders_open', (select count(*) from public.orders where status in ('pending', 'accepted', 'payment_submitted', 'buying', 'out_for_delivery')),
+    'orders_waiting_for_rider', (select count(*) from public.orders where status = 'pending'),
+    'payments_to_confirm', (select count(*) from public.orders where status = 'payment_submitted'),
     'gmv_today_minor', (select coalesce(sum(total_minor), 0) from public.orders
         where status = 'completed' and (completed_at at time zone 'Asia/Manila')::date = v_today),
     'active_merchants', (select count(*) from public.merchants where status = 'active' and is_published),
@@ -665,8 +578,7 @@ create view public.storefronts with (security_barrier = true) as
 select
   m.id, m.slug, m.name, m.category, m.description, m.logo_path, m.cover_path,
   m.address_line, m.barangay, m.city, m.service_area_id, sa.name as service_area_name,
-  m.prep_time_minutes, m.min_order_minor, m.supports_delivery, m.supports_pickup,
-  sa.delivery_fee_minor, m.currency,
+  m.min_order_minor, sa.delivery_fee_minor, sa.service_fee_minor, sa.typical_delivery_minutes, m.currency,
   public.store_state(m.id) as state,
   public.next_open_at(m.id) as next_open_at,
   r.rating_avg, coalesce(r.rating_count, 0) as rating_count,
@@ -734,24 +646,20 @@ end $$;
 revoke execute on function public.assert_can_manage(uuid) from public, anon, authenticated;
 
 revoke execute on function public.submit_partner_application(uuid) from public, anon;
-revoke execute on function public.review_partner_application(uuid, public.application_status, text, int) from public, anon;
+revoke execute on function public.review_partner_application(uuid, public.application_status, text) from public, anon;
 revoke execute on function public.set_store_published(uuid, boolean) from public, anon;
 revoke execute on function public.set_store_paused(uuid, boolean, timestamptz) from public, anon;
 revoke execute on function public.replace_store_hours(uuid, jsonb) from public, anon;
-revoke execute on function public.add_merchant_member(uuid, text, public.member_role) from public, anon;
-revoke execute on function public.remove_merchant_member(uuid, uuid) from public, anon;
 revoke execute on function public.save_product(uuid, jsonb) from public, anon;
 revoke execute on function public.set_product_status(uuid, public.product_status) from public, anon;
 revoke execute on function public.set_product_availability(uuid, boolean) from public, anon;
 revoke execute on function public.set_option_availability(uuid, boolean) from public, anon;
 revoke execute on function public.save_option_group(uuid, jsonb) from public, anon;
 revoke execute on function public.delete_option_group(uuid) from public, anon;
-revoke execute on function public.merchant_sales_summary(uuid, date, date) from public, anon;
 revoke execute on function public.set_merchant_status(uuid, public.merchant_status, text) from public, anon;
-revoke execute on function public.set_merchant_commission(uuid, int) from public, anon;
 revoke execute on function public.grant_role(text, public.app_role) from public, anon;
 revoke execute on function public.revoke_role(uuid, public.app_role) from public, anon;
-revoke execute on function public.create_rider(text, text, text, public.vehicle_type, text, uuid) from public, anon;
+revoke execute on function public.create_rider(text, text, text, public.vehicle_type, text, uuid, text, text) from public, anon;
 revoke execute on function public.set_rider_status(uuid, public.rider_status) from public, anon;
 revoke execute on function public.admin_overview() from public, anon;
 revoke execute on function public.application_missing_items(uuid) from public, anon;

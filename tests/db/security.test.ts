@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from 'vitest';
 import { TestDb } from './harness';
-import { createApplication, createCustomer, createPlatform, createStore, placeOrder, sel, type Store, type World } from './fixtures';
+import { createApplication, createCustomer, createPlatform, createRider, createStore, placeOrder, sel, type Store, type World } from './fixtures';
 
 describe('row level security and privilege boundaries', () => {
   let db: TestDb;
@@ -46,11 +46,10 @@ describe('row level security and privilege boundaries', () => {
   test('merchants are isolated from other stores', async () => {
     expect(await db.as(storeB.owner, `select id from orders where id = $1`, [aliceOrder])).toHaveLength(0);
     expect(await db.as(storeB.owner, `select id from merchants where id = $1`, [storeA.merchantId])).toHaveLength(0);
-    expect((await db.expectError(storeB.owner, `select update_order_status($1, 'accepted')`, [aliceOrder])).hint).toBe('order_not_found');
+    expect((await db.expectError(storeB.owner, `select update_order_status($1, 'cancelled', 'x')`, [aliceOrder])).hint).toBe('order_not_found');
     expect((await db.expectError(storeB.owner, `select save_product($1, '{"name":"Hack","base_price_minor":1}')`, [storeA.merchantId])).code).toBe('42501');
     expect((await db.expectError(storeB.owner, `select set_product_availability($1, false)`, [storeA.productId])).code).toBe('42501');
     expect((await db.expectError(storeB.owner, `select set_store_published($1, false)`, [storeA.merchantId])).code).toBe('42501');
-    expect((await db.expectError(storeB.owner, `select merchant_sales_summary($1, '2020-01-01', '2030-01-01')`, [storeA.merchantId])).code).toBe('42501');
     // Linking another store's option group to your product is refused by FK.
     expect(
       (await db.expectError(storeB.owner, `select save_product($1, $2)`, [
@@ -60,32 +59,30 @@ describe('row level security and privilege boundaries', () => {
     ).toBe('invalid_reference');
     const updated = await db.as(storeB.owner, `update merchants set name = 'Pwned' where id = $1 returning id`, [storeA.merchantId]);
     expect(updated).toHaveLength(0);
-    expect(await db.as(storeB.owner, `select id from commissions where merchant_id = $1`, [storeA.merchantId])).toHaveLength(0);
   });
 
-  test('staff members have limited store permissions', async () => {
+  test('store staff can mark items sold out but not edit or publish', async () => {
     const staff = await db.createUser('staff@example.test');
-    await db.as(storeA.owner, `select add_merchant_member($1, 'staff@example.test', 'staff')`, [storeA.merchantId]);
-    await db.as(staff, `select update_order_status($1, 'accepted')`, [aliceOrder]);
+    await db.sql(`insert into merchant_members (merchant_id, user_id, role) values ($1, $2, 'staff')`, [storeA.merchantId, staff]);
     await db.as(staff, `select set_product_availability($1, true)`, [storeA.productId]);
     expect((await db.expectError(staff, `select set_store_published($1, false)`, [storeA.merchantId])).code).toBe('42501');
-    expect((await db.expectError(staff, `select add_merchant_member($1, 'bob@example.test', 'manager')`, [storeA.merchantId])).code).toBe('42501');
-    expect(await db.as(staff, `select id from settlements`)).toHaveLength(0);
-    const ownerOnly = await db.expectError(storeA.owner, `select add_merchant_member($1, 'bob@example.test', 'owner')`, [storeA.merchantId]);
-    expect(ownerOnly.hint).toBe('invalid_role');
+    expect((await db.expectError(staff, `select save_product($1, '{"name":"X","base_price_minor":1}')`, [storeA.merchantId])).code).toBe('42501');
+    expect(await db.as(staff, `select id from orders`)).toHaveLength(0);
   });
 
   test('ordinary users cannot escalate privileges or touch protected columns', async () => {
     const insertRole = await db.expectError(alice.id, `insert into user_roles (user_id, role) values ($1, 'admin')`, [alice.id]);
     expect(insertRole.code).toBe('42501');
     expect((await db.expectError(alice.id, `select grant_role('alice@example.test', 'admin')`)).code).toBe('42501');
-    expect((await db.expectError(alice.id, `update merchants set commission_bps = 0`)).code).toBe('42501');
+    expect((await db.expectError(alice.id, `update merchants set status = 'active'`)).code).toBe('42501');
     expect((await db.expectError(alice.id, `update orders set total_minor = 1 where id = $1`, [aliceOrder])).code).toBe('42501');
     expect((await db.expectError(alice.id, `update orders set status = 'completed' where id = $1`, [aliceOrder])).code).toBe('42501');
-    expect((await db.expectError(alice.id, `insert into payments (order_id, provider, method, status, amount_minor) values ($1, 'cod', 'cod', 'paid', 1)`, [aliceOrder])).code).toBe('42501');
-    expect(await db.as(alice.id, `update platform_settings set online_payments_enabled = true returning id`)).toHaveLength(0);
+    expect((await db.expectError(alice.id, `update payments set status = 'paid' where order_id = $1`, [aliceOrder])).code).toBe('42501');
+    expect((await db.expectError(alice.id, `insert into payments (order_id, amount_minor, status) values ($1, 1, 'paid')`, [aliceOrder])).code).toBe('42501');
+    expect((await db.expectError(alice.id, `select confirm_gcash_payment($1, true)`, [aliceOrder])).hint).toBe('order_not_found');
+    expect(await db.as(alice.id, `update platform_settings set support_email = 'x@y.z' returning id`)).toHaveLength(0);
     expect(await db.as(alice.id, `update service_areas set delivery_fee_minor = 0 returning id`)).toHaveLength(0);
-    expect((await db.expectError(alice.id, `select review_partner_application(gen_random_uuid(), 'approved', null, 0)`)).code).toBe('42501');
+    expect((await db.expectError(alice.id, `select review_partner_application(gen_random_uuid(), 'approved', null)`)).code).toBe('42501');
     expect((await db.expectError(alice.id, `select admin_overview()`)).code).toBe('42501');
     expect(await db.as(alice.id, `select id from audit_logs`)).toHaveLength(0);
     expect(await db.as(alice.id, `select id from profiles where id <> $1`, [alice.id])).toHaveLength(0);
@@ -153,6 +150,27 @@ describe('row level security and privilege boundaries', () => {
     await db.as(world.admin, `select set_merchant_status($1, 'suspended', 'Permit expired')`, [storeB.merchantId]);
     expect(await db.as('anon', `select id from storefronts where id = $1`, [storeB.merchantId])).toHaveLength(0);
     expect((await db.expectError(storeB.owner, `select set_store_published($1, true)`, [storeB.merchantId])).hint).toBe('store_inactive');
+  });
+
+  test('rider GCash details and payments are visible only to the parties of the order', async () => {
+    const rider = await createRider(db, world, 'visible-rider@example.test');
+    const otherRider = await createRider(db, world, 'other-rider@example.test');
+    await db.as(alice.id, `select cart_add_item($1, $2, $3, 1)`, [storeA.productId, storeA.regularId, sel(storeA.options['Iced tea'])]);
+    const orderId = await placeOrder(db, alice.id, storeA.merchantId, alice.addressId);
+    const seen = (actor: string) => db.as(actor, `select gcash_number from rider_profiles where user_id = $1`, [rider]);
+
+    expect(await seen(alice.id)).toHaveLength(0);
+    await db.as(rider, `select rider_accept_order($1)`, [orderId]);
+    expect(await seen(alice.id)).toHaveLength(1);
+    expect(await seen(bob.id)).toHaveLength(0);
+    expect(await seen(storeA.owner)).toHaveLength(0);
+    expect(await seen(otherRider)).toHaveLength(0);
+
+    const payment = (actor: string) => db.as(actor, `select id from payments where order_id = $1`, [orderId]);
+    expect(await payment(rider)).toHaveLength(1);
+    expect(await payment(otherRider)).toHaveLength(0);
+    expect(await payment(storeA.owner)).toHaveLength(0);
+    expect(await payment(bob.id)).toHaveLength(0);
   });
 
   test('support tickets are private to the requester and support staff', async () => {

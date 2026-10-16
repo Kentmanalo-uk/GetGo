@@ -9,3 +9,6 @@ coverage
 supabase/.temp
 supabase/.branches
 *.tsbuildinfo
+
+# Local credentials file — never commit
+supabase-keys.txt

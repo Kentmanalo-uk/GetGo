@@ -18,15 +18,20 @@ create type public.merchant_category as enum ('restaurant', 'cafe', 'bakery', 'g
 create type public.merchant_status as enum ('active', 'suspended', 'closed');
 create type public.member_role as enum ('owner', 'manager', 'staff');
 create type public.product_status as enum ('draft', 'published', 'archived');
+-- Order lifecycle: a rider accepts the order, the customer pays the rider by
+-- GCash, the rider confirms the payment, buys the items at the store and
+-- delivers them.
 create type public.order_status as enum (
-  'awaiting_payment', 'pending', 'accepted', 'preparing', 'ready',
-  'out_for_delivery', 'completed', 'rejected', 'cancelled'
+  'pending',            -- placed, waiting for a rider
+  'accepted',           -- rider accepted; customer sends GCash payment
+  'payment_submitted',  -- customer submitted a GCash reference; rider confirms
+  'buying',             -- payment confirmed; rider is buying at the store
+  'out_for_delivery',
+  'completed',
+  'cancelled'
 );
-create type public.fulfillment_type as enum ('delivery', 'pickup');
-create type public.payment_method as enum ('cod', 'online');
-create type public.payment_status as enum ('pending', 'paid', 'failed', 'expired', 'cancelled', 'refunded', 'partially_refunded');
+create type public.payment_status as enum ('pending', 'submitted', 'paid', 'cancelled', 'refunded');
 create type public.refund_status as enum ('requested', 'approved', 'processed', 'rejected');
-create type public.settlement_status as enum ('draft', 'approved', 'paid');
 create type public.ticket_status as enum ('open', 'pending', 'resolved', 'closed');
 create type public.service_type as enum ('pabili', 'padala', 'errand');
 create type public.booking_status as enum ('requested', 'quoted', 'confirmed', 'in_progress', 'completed', 'cancelled');
@@ -175,6 +180,9 @@ create table public.service_areas (
   service_fee_minor bigint not null default 0 check (service_fee_minor >= 0),
   small_order_threshold_minor bigint check (small_order_threshold_minor is null or small_order_threshold_minor > 0),
   small_order_fee_minor bigint not null default 0 check (small_order_fee_minor >= 0),
+  -- Typical rider travel time within the area, set from operating experience.
+  -- Shown to customers on top of the store's preparation time when present.
+  typical_delivery_minutes int check (typical_delivery_minutes is null or typical_delivery_minutes between 5 and 120),
   currency char(3) not null default 'PHP' check (currency = 'PHP'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -184,13 +192,9 @@ create trigger service_areas_touch before update on public.service_areas
 create trigger service_areas_audit after insert or update or delete on public.service_areas
   for each row execute function public.audit_row_change();
 
--- Single-row platform settings. Commission terms are configured by an admin;
--- nothing here is pre-filled with invented commercial terms.
+-- Single-row platform settings (public-facing contact details and terms).
 create table public.platform_settings (
   id boolean primary key default true check (id),
-  online_payments_enabled boolean not null default false,
-  payment_expiry_minutes int not null default 30 check (payment_expiry_minutes between 5 and 240),
-  standard_commission_bps int check (standard_commission_bps is null or standard_commission_bps between 0 and 5000),
   partner_fee_note text check (char_length(partner_fee_note) <= 2000),
   support_email text,
   support_phone text,
@@ -298,8 +302,7 @@ create policy service_areas_admin_delete on public.service_areas for delete to a
 -- platform_settings: readable by everyone (it carries only public-facing terms
 -- and feature flags); only admins update.
 grant select on public.platform_settings to anon, authenticated;
-grant update (online_payments_enabled, payment_expiry_minutes, standard_commission_bps,
-  partner_fee_note, support_email, support_phone) on public.platform_settings to authenticated;
+grant update (partner_fee_note, support_email, support_phone) on public.platform_settings to authenticated;
 create policy platform_settings_select on public.platform_settings for select to anon, authenticated using (true);
 create policy platform_settings_update on public.platform_settings for update to authenticated
   using (public.is_admin()) with check (public.is_admin());

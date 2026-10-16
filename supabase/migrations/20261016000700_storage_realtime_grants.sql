@@ -70,7 +70,7 @@ create policy "documents owner delete" on storage.objects for delete to authenti
 do $$
 begin
   if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-    alter publication supabase_realtime add table public.orders, public.order_status_history, public.notifications;
+    alter publication supabase_realtime add table public.orders, public.order_status_history, public.notifications, public.assignments;
   end if;
 end $$;
 
@@ -82,34 +82,32 @@ grant execute on function
   public.cart_update_item(uuid, uuid, jsonb, int, text),
   public.cart_set_quantity(uuid, int),
   public.cart_clear(uuid),
-  public.quote_checkout(uuid, public.fulfillment_type, uuid, text),
-  public.place_order(uuid, public.fulfillment_type, uuid, public.payment_method, text, text, bigint, text),
-  public.update_order_status(uuid, public.order_status, text, int),
+  public.quote_checkout(uuid, uuid, text),
+  public.place_order(uuid, uuid, text, text, bigint, text),
+  public.rider_accept_order(uuid),
+  public.rider_release_order(uuid, text),
+  public.submit_gcash_payment(uuid, text, text),
+  public.confirm_gcash_payment(uuid, boolean, text),
+  public.update_order_status(uuid, public.order_status, text),
   public.assign_rider(uuid, uuid),
   public.request_refund(uuid, bigint, text),
   public.review_refund(uuid, text, text),
-  public.generate_settlement(uuid, date, date),
-  public.update_settlement_status(uuid, public.settlement_status, text),
   public.submit_partner_application(uuid),
   public.application_missing_items(uuid),
-  public.review_partner_application(uuid, public.application_status, text, int),
+  public.review_partner_application(uuid, public.application_status, text),
   public.set_store_published(uuid, boolean),
   public.set_store_paused(uuid, boolean, timestamptz),
   public.replace_store_hours(uuid, jsonb),
-  public.add_merchant_member(uuid, text, public.member_role),
-  public.remove_merchant_member(uuid, uuid),
   public.save_product(uuid, jsonb),
   public.set_product_status(uuid, public.product_status),
   public.set_product_availability(uuid, boolean),
   public.set_option_availability(uuid, boolean),
   public.save_option_group(uuid, jsonb),
   public.delete_option_group(uuid),
-  public.merchant_sales_summary(uuid, date, date),
   public.set_merchant_status(uuid, public.merchant_status, text),
-  public.set_merchant_commission(uuid, int),
   public.grant_role(text, public.app_role),
   public.revoke_role(uuid, public.app_role),
-  public.create_rider(text, text, text, public.vehicle_type, text, uuid),
+  public.create_rider(text, text, text, public.vehicle_type, text, uuid, text, text),
   public.set_rider_status(uuid, public.rider_status),
   public.admin_overview(),
   public.my_roles()

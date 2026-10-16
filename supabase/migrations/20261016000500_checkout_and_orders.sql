@@ -1,4 +1,4 @@
--- Trusted cart, checkout, order lifecycle, payment, refund and settlement
+-- Trusted cart, checkout, order lifecycle, GCash payment and refund
 -- workflows. Every function re-checks the caller's permissions; clients have no
 -- direct write access to the tables these functions maintain.
 --
@@ -172,9 +172,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Checkout computation (single source of truth for quote and order creation)
 -- ---------------------------------------------------------------------------
-create or replace function public.compute_checkout(
-  p_user uuid, p_merchant_id uuid, p_fulfillment public.fulfillment_type, p_address_id uuid, p_promo_code text
-)
+create or replace function public.compute_checkout(p_user uuid, p_merchant_id uuid, p_address_id uuid, p_promo_code text)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare
   v_merchant public.merchants%rowtype;
@@ -194,7 +192,6 @@ declare
   v_service bigint := 0;
   v_small bigint := 0;
   v_discount bigint := 0;
-  v_merchant_discount bigint := 0;
   v_promo_result jsonb;
   v_promo_message text;
   v_state text;
@@ -209,29 +206,23 @@ begin
   v_state := public.store_state(p_merchant_id);
 
   if not public.merchant_is_public(p_merchant_id) then
-    v_issues := v_issues || jsonb_build_object('code', 'store_unavailable', 'message', 'This store is not taking orders on GETGO right now.');
+    v_issues := v_issues || jsonb_build_object('code', 'store_unavailable', 'message', 'This store is not available on GETGO right now.');
   elsif v_state = 'paused' then
-    v_issues := v_issues || jsonb_build_object('code', 'store_paused', 'message', 'This store has paused new orders. Please try again later.');
+    v_issues := v_issues || jsonb_build_object('code', 'store_paused', 'message', 'This store is temporarily closed. Please try again later.');
   elsif v_state = 'closed' then
-    v_issues := v_issues || jsonb_build_object('code', 'store_closed', 'message', 'This store is closed right now.');
+    v_issues := v_issues || jsonb_build_object('code', 'store_closed', 'message', 'This store is closed right now, so a rider can’t buy from it.');
   end if;
 
-  if p_fulfillment = 'delivery' then
-    if not v_merchant.supports_delivery then
-      v_issues := v_issues || jsonb_build_object('code', 'delivery_unavailable', 'message', 'This store offers pickup only.');
-    elsif p_address_id is null then
-      v_issues := v_issues || jsonb_build_object('code', 'address_required', 'message', 'Choose a delivery address.');
-    else
-      select * into v_address from public.addresses where id = p_address_id and user_id = p_user;
-      if not found then
-        v_issues := v_issues || jsonb_build_object('code', 'address_invalid', 'message', 'Choose a delivery address.');
-      elsif v_address.service_area_id <> v_merchant.service_area_id then
-        v_issues := v_issues || jsonb_build_object('code', 'outside_area',
-          'message', format('%s delivers within %s only.', v_merchant.name, v_area.name));
-      end if;
+  if p_address_id is null then
+    v_issues := v_issues || jsonb_build_object('code', 'address_required', 'message', 'Choose a delivery address.');
+  else
+    select * into v_address from public.addresses where id = p_address_id and user_id = p_user;
+    if not found then
+      v_issues := v_issues || jsonb_build_object('code', 'address_invalid', 'message', 'Choose a delivery address.');
+    elsif v_address.service_area_id <> v_merchant.service_area_id then
+      v_issues := v_issues || jsonb_build_object('code', 'outside_area',
+        'message', format('Riders for %s deliver within %s only.', v_merchant.name, v_area.name));
     end if;
-  elsif not v_merchant.supports_pickup then
-    v_issues := v_issues || jsonb_build_object('code', 'pickup_unavailable', 'message', 'This store offers delivery only.');
   end if;
 
   select id into v_cart_id from public.carts where user_id = p_user and merchant_id = p_merchant_id;
@@ -298,15 +289,12 @@ begin
     v_issues := v_issues || jsonb_build_object('code', 'area_inactive', 'message', 'GETGO is not operating in this area right now.');
   end if;
 
-  if p_fulfillment = 'delivery' then
-    v_delivery := v_area.delivery_fee_minor;
-  end if;
+  v_delivery := v_area.delivery_fee_minor;
   v_service := v_area.service_fee_minor;
   if v_area.small_order_threshold_minor is not null and v_subtotal > 0 and v_subtotal < v_area.small_order_threshold_minor then
     v_small := v_area.small_order_fee_minor;
   end if;
 
-  -- Promotion
   if v_code is not null then
     select * into v_promo from public.promotions where code = v_code;
     if not found or not v_promo.is_active or v_promo.starts_at > now()
@@ -316,8 +304,6 @@ begin
       v_promo_message := 'This promo code does not apply to this store.';
     elsif v_subtotal < v_promo.min_subtotal_minor then
       v_promo_message := format('Spend at least %s to use this code.', public.format_php(v_promo.min_subtotal_minor));
-    elsif v_promo.discount_type = 'free_delivery' and p_fulfillment <> 'delivery' then
-      v_promo_message := 'This code applies to delivery orders only.';
     else
       if v_promo.usage_limit is not null then
         select count(*) into v_used from public.promotion_redemptions where promotion_id = v_promo.id;
@@ -334,17 +320,17 @@ begin
     end if;
 
     if v_promo_message is null then
+      -- Discounts come out of GETGO's fees; the rider still pays the store's
+      -- full listed prices.
       v_discount := case v_promo.discount_type
         when 'percent' then (v_subtotal * v_promo.value) / 10000
-        when 'fixed' then least(v_promo.value, v_subtotal)
+        when 'fixed' then v_promo.value
         else v_delivery
       end;
       if v_promo.max_discount_minor is not null then
         v_discount := least(v_discount, v_promo.max_discount_minor);
       end if;
-      if v_promo.funded_by = 'merchant' then
-        v_merchant_discount := v_discount;
-      end if;
+      v_discount := least(v_discount, v_delivery + v_service + v_small);
       v_promo_result := jsonb_build_object('code', v_code, 'applied', true, 'promotion_id', v_promo.id,
         'title', v_promo.title, 'message', null);
     else
@@ -355,11 +341,9 @@ begin
   return jsonb_build_object(
     'merchant', jsonb_build_object(
       'id', v_merchant.id, 'name', v_merchant.name, 'slug', v_merchant.slug, 'state', v_state,
-      'supports_delivery', v_merchant.supports_delivery, 'supports_pickup', v_merchant.supports_pickup,
-      'min_order_minor', v_merchant.min_order_minor, 'prep_time_minutes', v_merchant.prep_time_minutes,
+      'min_order_minor', v_merchant.min_order_minor,
       'service_area_id', v_merchant.service_area_id, 'service_area_name', v_area.name
     ),
-    'fulfillment', p_fulfillment,
     'address_id', p_address_id,
     'items', v_items,
     'subtotal_minor', v_subtotal,
@@ -367,8 +351,6 @@ begin
     'service_fee_minor', v_service,
     'small_order_fee_minor', v_small,
     'discount_minor', v_discount,
-    'merchant_discount_minor', v_merchant_discount,
-    'tax_minor', 0,
     'total_minor', v_subtotal + v_delivery + v_service + v_small - v_discount,
     'currency', 'PHP',
     'promo', v_promo_result,
@@ -377,26 +359,29 @@ begin
   );
 end $$;
 
-create or replace function public.quote_checkout(
-  p_merchant_id uuid, p_fulfillment public.fulfillment_type, p_address_id uuid default null, p_promo_code text default null
-)
+create or replace function public.quote_checkout(p_merchant_id uuid, p_address_id uuid default null, p_promo_code text default null)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
 begin
   if auth.uid() is null then
     raise exception 'Sign in to check out.' using errcode = '42501';
   end if;
-  return public.compute_checkout(auth.uid(), p_merchant_id, p_fulfillment, p_address_id, p_promo_code)
-    || jsonb_build_object('online_payments_enabled', (select online_payments_enabled from public.platform_settings));
+  return public.compute_checkout(auth.uid(), p_merchant_id, p_address_id, p_promo_code);
 end $$;
+
+-- Notifies every active rider in an area about an order to accept.
+create or replace function public.notify_area_riders(p_service_area_id uuid, p_title text, p_body text, p_link text)
+returns void language sql security definer set search_path = public, pg_temp as $$
+  insert into public.notifications (user_id, kind, title, body, link)
+  select user_id, 'order.available', p_title, p_body, p_link
+  from public.rider_profiles where service_area_id = p_service_area_id and status = 'active';
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Order placement
 -- ---------------------------------------------------------------------------
 create or replace function public.place_order(
   p_merchant_id uuid,
-  p_fulfillment public.fulfillment_type,
   p_address_id uuid,
-  p_payment_method public.payment_method,
   p_notes text,
   p_promo_code text,
   p_expected_total_minor bigint,
@@ -415,13 +400,7 @@ declare
   v_item_id uuid;
   v_merchant public.merchants%rowtype;
   v_address public.addresses%rowtype;
-  v_profile public.profiles%rowtype;
-  v_settings public.platform_settings%rowtype;
-  v_status public.order_status;
   v_code text;
-  v_name text;
-  v_phone text;
-  v_delivery_address jsonb;
 begin
   if v_user is null then
     raise exception 'Sign in to place an order.' using errcode = '42501';
@@ -441,17 +420,11 @@ begin
     raise exception 'Your cart is empty.' using errcode = 'P0001', hint = 'cart_empty';
   end if;
 
-  select * into v_settings from public.platform_settings;
-  if p_payment_method = 'online' and not v_settings.online_payments_enabled then
-    raise exception 'Online payment is not available yet. Choose cash payment instead.'
-      using errcode = 'P0001', hint = 'payment_unavailable';
-  end if;
-
   if nullif(trim(p_promo_code), '') is not null then
     perform 1 from public.promotions where code = upper(trim(p_promo_code)) for update;
   end if;
 
-  v_quote := public.compute_checkout(v_user, p_merchant_id, p_fulfillment, p_address_id, p_promo_code);
+  v_quote := public.compute_checkout(v_user, p_merchant_id, p_address_id, p_promo_code);
 
   if not (v_quote ->> 'can_checkout')::boolean then
     select i ->> 'error_message' into v_message
@@ -469,46 +442,31 @@ begin
   end if;
 
   select * into v_merchant from public.merchants where id = p_merchant_id;
+  select * into v_address from public.addresses where id = p_address_id and user_id = v_user;
 
-  if p_fulfillment = 'delivery' then
-    select * into v_address from public.addresses where id = p_address_id and user_id = v_user;
-    v_name := v_address.recipient_name;
-    v_phone := v_address.phone;
-    v_delivery_address := jsonb_build_object(
-      'label', v_address.label, 'recipient_name', v_address.recipient_name, 'phone', v_address.phone,
-      'line1', v_address.line1, 'barangay', v_address.barangay, 'city', v_address.city,
-      'landmark', v_address.landmark);
-  else
-    select * into v_profile from public.profiles where id = v_user;
-    if v_profile.phone is null then
-      raise exception 'Add a mobile number to your profile so the store can reach you.'
-        using errcode = 'P0001', hint = 'phone_required';
-    end if;
-    v_name := coalesce(v_profile.full_name, v_profile.email, 'Customer');
-    v_phone := v_profile.phone;
-  end if;
-
-  v_status := case when p_payment_method = 'online' then 'awaiting_payment' else 'pending' end;
   loop
     v_code := public.gen_order_code();
     exit when not exists (select 1 from public.orders where code = v_code);
   end loop;
 
   insert into public.orders (
-    code, customer_id, merchant_id, status, fulfillment, payment_method, payment_status, service_area_id,
-    merchant_name, pickup_address, customer_name, customer_phone, delivery_address, notes,
-    subtotal_minor, delivery_fee_minor, service_fee_minor, small_order_fee_minor, discount_minor, tax_minor, total_minor,
-    promotion_id, merchant_discount_minor, commission_bps, idempotency_key
+    code, customer_id, merchant_id, service_area_id, merchant_name, pickup_address,
+    customer_name, customer_phone, delivery_address, notes,
+    subtotal_minor, delivery_fee_minor, service_fee_minor, small_order_fee_minor, discount_minor, total_minor,
+    promotion_id, idempotency_key
   ) values (
-    v_code, v_user, p_merchant_id, v_status, p_fulfillment, p_payment_method, 'pending', v_merchant.service_area_id,
-    v_merchant.name,
+    v_code, v_user, p_merchant_id, v_merchant.service_area_id, v_merchant.name,
     jsonb_build_object('line1', v_merchant.address_line, 'barangay', v_merchant.barangay, 'city', v_merchant.city, 'phone', v_merchant.phone),
-    v_name, v_phone, v_delivery_address, nullif(trim(p_notes), ''),
+    v_address.recipient_name, v_address.phone,
+    jsonb_build_object(
+      'label', v_address.label, 'recipient_name', v_address.recipient_name, 'phone', v_address.phone,
+      'line1', v_address.line1, 'barangay', v_address.barangay, 'city', v_address.city, 'landmark', v_address.landmark),
+    nullif(trim(p_notes), ''),
     (v_quote ->> 'subtotal_minor')::bigint, (v_quote ->> 'delivery_fee_minor')::bigint,
     (v_quote ->> 'service_fee_minor')::bigint, (v_quote ->> 'small_order_fee_minor')::bigint,
-    (v_quote ->> 'discount_minor')::bigint, (v_quote ->> 'tax_minor')::bigint, (v_quote ->> 'total_minor')::bigint,
+    (v_quote ->> 'discount_minor')::bigint, (v_quote ->> 'total_minor')::bigint,
     case when (v_quote -> 'promo' ->> 'applied')::boolean then (v_quote -> 'promo' ->> 'promotion_id')::uuid end,
-    (v_quote ->> 'merchant_discount_minor')::bigint, v_merchant.commission_bps, p_idempotency_key
+    p_idempotency_key
   ) returning id into v_order_id;
 
   for v_item in select * from jsonb_array_elements(v_quote -> 'items') loop
@@ -530,19 +488,14 @@ begin
     values ((v_quote -> 'promo' ->> 'promotion_id')::uuid, v_order_id, v_user, (v_quote ->> 'discount_minor')::bigint);
   end if;
 
-  insert into public.payments (order_id, provider, method, status, amount_minor, expires_at)
-  values (v_order_id, case when p_payment_method = 'cod' then 'cod' else 'paymongo' end, p_payment_method,
-    'pending', (v_quote ->> 'total_minor')::bigint,
-    case when p_payment_method = 'online' then now() + make_interval(mins => v_settings.payment_expiry_minutes) end);
+  insert into public.payments (order_id, amount_minor) values (v_order_id, (v_quote ->> 'total_minor')::bigint);
 
   insert into public.order_status_history (order_id, from_status, to_status, actor_id, actor_kind)
-  values (v_order_id, null, v_status, v_user, 'customer');
+  values (v_order_id, null, 'pending', v_user, 'customer');
 
-  if v_status = 'pending' then
-    perform public.notify_merchant(p_merchant_id, 'order.new', format('New order %s', v_code),
-      format('%s · %s', public.format_php((v_quote ->> 'subtotal_minor')::bigint), initcap(p_fulfillment::text)),
-      '/merchant/orders/' || v_order_id);
-  end if;
+  perform public.notify_area_riders(v_merchant.service_area_id, format('New order %s', v_code),
+    format('Buy from %s · %s to collect', v_merchant.name, public.format_php((v_quote ->> 'total_minor')::bigint)),
+    '/rider');
 
   delete from public.carts where id = v_cart_id;
   return v_order_id;
@@ -557,172 +510,273 @@ end $$;
 
 -- ---------------------------------------------------------------------------
 -- Order lifecycle
+--   pending → accepted            rider accepts (or staff assigns)
+--   accepted → pending            rider releases before payment
+--   accepted → payment_submitted  customer submits the GCash reference
+--   payment_submitted → buying    rider confirms the GCash payment
+--   payment_submitted → accepted  rider did not receive it
+--   buying → out_for_delivery     rider has the items
+--   out_for_delivery → completed  delivered
+--   open states → cancelled       customer (before paying), rider (after
+--                                 payment, with a reason) or staff
 -- ---------------------------------------------------------------------------
-create or replace function public.order_transition_allowed(
-  p_from public.order_status, p_to public.order_status, p_fulfillment public.fulfillment_type
-)
+create or replace function public.order_transition_allowed(p_from public.order_status, p_to public.order_status)
 returns boolean language sql immutable as $$
   select case p_from
-    when 'awaiting_payment' then p_to = 'cancelled'
-    when 'pending' then p_to in ('accepted', 'rejected', 'cancelled')
-    when 'accepted' then p_to in ('preparing', 'cancelled')
-    when 'preparing' then p_to in ('ready', 'cancelled')
-    when 'ready' then p_to = 'cancelled'
-      or (p_to = 'out_for_delivery' and p_fulfillment = 'delivery')
-      or (p_to = 'completed' and p_fulfillment = 'pickup')
+    when 'pending' then p_to in ('accepted', 'cancelled')
+    when 'accepted' then p_to in ('pending', 'payment_submitted', 'cancelled')
+    when 'payment_submitted' then p_to in ('accepted', 'buying', 'cancelled')
+    when 'buying' then p_to in ('out_for_delivery', 'cancelled')
     when 'out_for_delivery' then p_to in ('completed', 'cancelled')
     else false
   end;
 $$;
 
--- Side effects shared by every path that ends an order unsuccessfully.
+create or replace function public.record_transition(
+  p_order_id uuid, p_from public.order_status, p_to public.order_status, p_actor_kind text, p_note text
+)
+returns void language sql security definer set search_path = public, pg_temp as $$
+  insert into public.order_status_history (order_id, from_status, to_status, actor_id, actor_kind, note)
+  values (p_order_id, p_from, p_to, auth.uid(), p_actor_kind, p_note);
+$$;
+
+-- Assigns a rider and tells the customer where to send payment.
+create or replace function public.start_assignment(p_order_id uuid, p_rider_id uuid, p_assigned_by uuid)
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_rider public.rider_profiles%rowtype;
+  v_order public.orders%rowtype;
+begin
+  select * into v_rider from public.rider_profiles where user_id = p_rider_id;
+  update public.assignments set status = 'released', completed_at = now() where order_id = p_order_id and status = 'active';
+  insert into public.assignments (order_id, rider_id, assigned_by) values (p_order_id, p_rider_id, p_assigned_by);
+  update public.orders set status = 'accepted', accepted_at = now(), payment_status = 'pending'
+  where id = p_order_id returning * into v_order;
+  update public.payments set payee_name = v_rider.gcash_name, payee_number = v_rider.gcash_number,
+    status = 'pending', gcash_reference = null, sender_name = null, submitted_at = null, rejection_note = null
+  where order_id = p_order_id;
+  perform public.notify(v_order.customer_id, 'order.accepted',
+    format('%s accepted your order', split_part(v_rider.full_name, ' ', 1)),
+    format('Send %s by GCash to %s (%s), then enter the reference number.', public.format_php(v_order.total_minor),
+      v_rider.gcash_name, v_rider.gcash_number),
+    '/orders/' || p_order_id);
+end $$;
+
+create or replace function public.rider_accept_order(p_order_id uuid)
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_order public.orders%rowtype;
+begin
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found or not public.is_area_rider(v_order.service_area_id) then
+    raise exception 'Order not found.' using errcode = 'P0001', hint = 'order_not_found';
+  end if;
+  if v_order.status <> 'pending' then
+    raise exception 'Another rider already accepted this order.' using errcode = 'P0001', hint = 'already_taken';
+  end if;
+  perform public.start_assignment(p_order_id, auth.uid(), auth.uid());
+  perform public.record_transition(p_order_id, 'pending', 'accepted', 'rider', null);
+end $$;
+
+create or replace function public.assign_rider(p_order_id uuid, p_rider_id uuid)
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_order public.orders%rowtype;
+  v_rider public.rider_profiles%rowtype;
+begin
+  if not (public.has_role('admin') or public.has_role('support')) then
+    raise exception 'Not allowed.' using errcode = '42501';
+  end if;
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found or v_order.status not in ('pending', 'accepted') then
+    raise exception 'Riders can be assigned only before payment is submitted.' using errcode = 'P0001', hint = 'invalid_assignment';
+  end if;
+  select * into v_rider from public.rider_profiles where user_id = p_rider_id;
+  if not found or v_rider.status <> 'active' or v_rider.service_area_id <> v_order.service_area_id then
+    raise exception 'Choose an active rider from the order’s area.' using errcode = 'P0001', hint = 'rider_unavailable';
+  end if;
+  perform public.start_assignment(p_order_id, p_rider_id, auth.uid());
+  perform public.record_transition(p_order_id, v_order.status, 'accepted', 'admin', 'Rider assigned by GETGO');
+  perform public.notify(p_rider_id, 'assignment.new', format('Order %s assigned to you', v_order.code),
+    format('Buy from %s', v_order.merchant_name), '/rider');
+  perform public.log_audit('order.rider_assigned', 'order', p_order_id::text, jsonb_build_object('rider_id', p_rider_id));
+end $$;
+
+-- The rider can hand an order back before the customer pays.
+create or replace function public.rider_release_order(p_order_id uuid, p_note text default null)
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_order public.orders%rowtype;
+begin
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found or not exists (select 1 from public.assignments where order_id = p_order_id and rider_id = auth.uid() and status = 'active') then
+    raise exception 'Order not found.' using errcode = 'P0001', hint = 'order_not_found';
+  end if;
+  if v_order.status <> 'accepted' then
+    raise exception 'You can only release an order before the customer pays.' using errcode = 'P0001', hint = 'invalid_transition';
+  end if;
+  update public.assignments set status = 'released', completed_at = now() where order_id = p_order_id and status = 'active';
+  update public.orders set status = 'pending', accepted_at = null where id = p_order_id;
+  update public.payments set payee_name = null, payee_number = null where order_id = p_order_id;
+  perform public.record_transition(p_order_id, 'accepted', 'pending', 'rider', nullif(trim(p_note), ''));
+  perform public.notify(v_order.customer_id, 'order.released', 'Finding another rider',
+    'Your rider couldn’t take this order. Don’t send payment yet — we’re finding another rider.', '/orders/' || p_order_id);
+  perform public.notify_area_riders(v_order.service_area_id, format('Order %s needs a rider', v_order.code),
+    format('Buy from %s', v_order.merchant_name), '/rider');
+end $$;
+
+create or replace function public.submit_gcash_payment(p_order_id uuid, p_reference text, p_sender_name text default null)
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_order public.orders%rowtype;
+  v_reference text := upper(regexp_replace(coalesce(p_reference, ''), '\s', '', 'g'));
+  v_rider uuid;
+begin
+  select * into v_order from public.orders where id = p_order_id and customer_id = auth.uid() for update;
+  if not found then
+    raise exception 'Order not found.' using errcode = 'P0001', hint = 'order_not_found';
+  end if;
+  if v_order.status <> 'accepted' then
+    raise exception 'Send payment only after a rider accepts your order.' using errcode = 'P0001', hint = 'invalid_transition';
+  end if;
+  if v_reference !~ '^[0-9A-Z]{6,30}$' then
+    raise exception 'Enter the reference number from your GCash receipt.' using errcode = 'P0001', hint = 'invalid_reference';
+  end if;
+  if exists (select 1 from public.payments where gcash_reference = v_reference and order_id <> p_order_id) then
+    raise exception 'This reference number was already used for another order.' using errcode = 'P0001', hint = 'duplicate_reference';
+  end if;
+  update public.payments set status = 'submitted', gcash_reference = v_reference,
+    sender_name = nullif(trim(p_sender_name), ''), submitted_at = now(), rejection_note = null
+  where order_id = p_order_id;
+  update public.orders set status = 'payment_submitted', payment_status = 'submitted' where id = p_order_id;
+  perform public.record_transition(p_order_id, 'accepted', 'payment_submitted', 'customer', null);
+  select rider_id into v_rider from public.assignments where order_id = p_order_id and status = 'active';
+  perform public.notify(v_rider, 'payment.submitted', format('Payment sent for %s', v_order.code),
+    format('Check your GCash for %s, reference %s.', public.format_php(v_order.total_minor), v_reference), '/rider');
+end $$;
+
+-- The assigned rider confirms whether the GCash payment arrived.
+create or replace function public.confirm_gcash_payment(p_order_id uuid, p_received boolean, p_note text default null)
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_order public.orders%rowtype;
+begin
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found or not exists (select 1 from public.assignments where order_id = p_order_id and rider_id = auth.uid() and status = 'active') then
+    raise exception 'Order not found.' using errcode = 'P0001', hint = 'order_not_found';
+  end if;
+  if v_order.status <> 'payment_submitted' then
+    raise exception 'There is no payment waiting for confirmation.' using errcode = 'P0001', hint = 'invalid_transition';
+  end if;
+
+  if p_received then
+    update public.payments set status = 'paid', confirmed_at = now(), confirmed_by = auth.uid() where order_id = p_order_id;
+    update public.orders set status = 'buying', payment_status = 'paid', paid_at = now() where id = p_order_id;
+    perform public.record_transition(p_order_id, 'payment_submitted', 'buying', 'rider', 'Payment received');
+    perform public.notify(v_order.customer_id, 'order.buying', 'Payment received',
+      format('Your rider is buying your order at %s.', v_order.merchant_name), '/orders/' || p_order_id);
+  else
+    if nullif(trim(p_note), '') is null then
+      raise exception 'Tell the customer what’s wrong with the payment.' using errcode = 'P0001', hint = 'reason_required';
+    end if;
+    update public.payments set status = 'pending', rejection_note = trim(p_note), gcash_reference = null, submitted_at = null
+    where order_id = p_order_id;
+    update public.orders set status = 'accepted', payment_status = 'pending' where id = p_order_id;
+    perform public.record_transition(p_order_id, 'payment_submitted', 'accepted', 'rider', trim(p_note));
+    perform public.notify(v_order.customer_id, 'payment.not_received', 'Your rider hasn’t received the payment',
+      trim(p_note), '/orders/' || p_order_id);
+  end if;
+end $$;
+
+-- Side effects shared by every path that cancels an order.
 create or replace function public.close_order_unsuccessfully(p_order_id uuid, p_actor uuid, p_reason text)
 returns void language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_payment public.payments%rowtype;
 begin
   delete from public.promotion_redemptions where order_id = p_order_id;
-  update public.assignments set status = 'released', completed_at = now()
-  where order_id = p_order_id and status = 'active';
-  update public.payments set status = 'cancelled' where order_id = p_order_id and status = 'pending';
-
-  for v_payment in select * from public.payments where order_id = p_order_id and status = 'paid' loop
-    if v_payment.amount_minor - v_payment.refunded_minor > 0 then
-      insert into public.refunds (order_id, payment_id, amount_minor, reason, requested_by)
-      values (p_order_id, v_payment.id, v_payment.amount_minor - v_payment.refunded_minor,
-        coalesce('Order cancelled: ' || p_reason, 'Order cancelled'), p_actor);
-    end if;
-  end loop;
-
-  update public.orders set payment_status = 'cancelled'
-  where id = p_order_id and payment_status in ('pending', 'failed');
+  update public.assignments set status = 'released', completed_at = now() where order_id = p_order_id and status = 'active';
+  select * into v_payment from public.payments where order_id = p_order_id for update;
+  if v_payment.status = 'paid' then
+    insert into public.refunds (order_id, payment_id, amount_minor, reason, requested_by)
+    values (p_order_id, v_payment.id, v_payment.amount_minor - v_payment.refunded_minor,
+      coalesce('Order cancelled: ' || p_reason, 'Order cancelled'), p_actor);
+    perform public.notify_staff('refund.required', 'GCash refund needed', p_reason, '/admin/payments');
+  else
+    update public.payments set status = 'cancelled' where id = v_payment.id;
+    update public.orders set payment_status = 'cancelled' where id = p_order_id;
+  end if;
 end $$;
 
-create or replace function public.update_order_status(
-  p_order_id uuid, p_status public.order_status, p_note text default null, p_prep_minutes int default null
-)
+-- Delivery progress and cancellation.
+create or replace function public.update_order_status(p_order_id uuid, p_status public.order_status, p_note text default null)
 returns public.orders language plpgsql security definer set search_path = public, pg_temp as $$
 declare
-  v_user uuid := auth.uid();
   v_order public.orders%rowtype;
   v_from public.order_status;
   v_note text := nullif(trim(p_note), '');
-  v_is_customer boolean;
-  v_is_merchant boolean;
   v_is_rider boolean;
-  v_has_rider boolean;
   v_actor text;
-  v_prep int;
   v_rider uuid;
 begin
-  if v_user is null then
+  if auth.uid() is null then
     raise exception 'Sign in required.' using errcode = '42501';
   end if;
   select * into v_order from public.orders where id = p_order_id for update;
   if not found or not public.can_view_order(p_order_id) then
     raise exception 'Order not found.' using errcode = 'P0001', hint = 'order_not_found';
   end if;
-
   v_from := v_order.status;
-  v_is_customer := v_order.customer_id = v_user;
-  v_is_merchant := public.is_merchant_member(v_order.merchant_id);
-  v_is_rider := exists (select 1 from public.assignments where order_id = p_order_id and rider_id = v_user and status = 'active');
-  v_has_rider := exists (select 1 from public.assignments where order_id = p_order_id and status = 'active');
-
-  if not public.order_transition_allowed(v_from, p_status, v_order.fulfillment) then
+  if p_status not in ('out_for_delivery', 'completed', 'cancelled') or not public.order_transition_allowed(v_from, p_status) then
     raise exception 'This order can no longer be changed to %.', replace(p_status::text, '_', ' ')
       using errcode = 'P0001', hint = 'invalid_transition';
   end if;
+  select rider_id into v_rider from public.assignments where order_id = p_order_id and status = 'active';
+  v_is_rider := v_rider is not null and v_rider = auth.uid();
 
   v_actor := case
-    when p_status = 'cancelled' and v_from in ('awaiting_payment', 'pending') and v_is_customer then 'customer'
-    when v_from = 'pending' and p_status in ('accepted', 'rejected') and v_is_merchant then 'merchant'
-    when v_from in ('accepted', 'preparing') and p_status in ('preparing', 'ready', 'cancelled') and v_is_merchant then 'merchant'
-    when v_from = 'ready' and p_status = 'completed' and v_is_merchant then 'merchant'
-    when v_from in ('ready', 'out_for_delivery') and p_status in ('out_for_delivery', 'completed') and v_is_rider then 'rider'
-    when v_from in ('ready', 'out_for_delivery') and p_status in ('out_for_delivery', 'completed')
-         and v_is_merchant and not v_has_rider then 'merchant'
+    when p_status = 'cancelled' and v_from in ('pending', 'accepted') and v_order.customer_id = auth.uid() then 'customer'
+    when p_status in ('out_for_delivery', 'completed') and v_is_rider then 'rider'
+    when p_status = 'cancelled' and v_from in ('buying', 'out_for_delivery') and v_is_rider then 'rider'
     when public.has_role('admin') or public.has_role('support') then 'admin'
   end;
-
   if v_actor is null then
     raise exception 'You are not allowed to make this change.' using errcode = '42501';
   end if;
-  if p_status in ('rejected', 'cancelled') and v_actor <> 'customer' and v_note is null then
+  if p_status = 'cancelled' and v_actor <> 'customer' and v_note is null then
     raise exception 'Give a reason so the customer knows what happened.' using errcode = 'P0001', hint = 'reason_required';
-  end if;
-
-  if p_status = 'accepted' then
-    v_prep := coalesce(p_prep_minutes, (select prep_time_minutes from public.merchants where id = v_order.merchant_id));
-    if v_prep not between 5 and 180 then
-      raise exception 'Preparation time must be between 5 and 180 minutes.' using errcode = 'P0001', hint = 'invalid_prep_time';
-    end if;
   end if;
 
   update public.orders set
     status = p_status,
-    accepted_at = case when p_status = 'accepted' then now() else accepted_at end,
-    prep_time_minutes = case when p_status = 'accepted' then v_prep else prep_time_minutes end,
-    estimated_ready_at = case when p_status = 'accepted' then now() + make_interval(mins => v_prep) else estimated_ready_at end,
-    ready_at = case when p_status = 'ready' then now() else ready_at end,
     picked_up_at = case when p_status = 'out_for_delivery' then now() else picked_up_at end,
     completed_at = case when p_status = 'completed' then now() else completed_at end,
-    cancelled_at = case when p_status in ('cancelled', 'rejected') then now() else cancelled_at end,
-    reject_reason = case when p_status = 'rejected' then v_note else reject_reason end,
+    cancelled_at = case when p_status = 'cancelled' then now() else cancelled_at end,
     cancel_reason = case when p_status = 'cancelled' then v_note else cancel_reason end,
-    cancelled_by = case when p_status in ('cancelled', 'rejected') then v_user else cancelled_by end
-  where id = p_order_id
-  returning * into v_order;
+    cancelled_by = case when p_status = 'cancelled' then auth.uid() else cancelled_by end
+  where id = p_order_id;
 
   if p_status = 'completed' then
-    update public.payments set status = 'paid', paid_at = now()
-    where order_id = p_order_id and provider = 'cod' and status = 'pending';
-    if v_order.payment_method = 'cod' then
-      update public.orders set payment_status = 'paid' where id = p_order_id returning * into v_order;
-    end if;
-    insert into public.commissions (order_id, merchant_id, rate_bps, base_minor, amount_minor)
-    values (p_order_id, v_order.merchant_id, v_order.commission_bps,
-      v_order.subtotal_minor - v_order.merchant_discount_minor,
-      round((v_order.subtotal_minor - v_order.merchant_discount_minor) * v_order.commission_bps / 10000.0)::bigint)
-    on conflict (order_id) do nothing;
-    update public.assignments set status = 'completed', completed_at = now()
-    where order_id = p_order_id and status = 'active';
-  elsif p_status in ('cancelled', 'rejected') then
-    select rider_id into v_rider from public.assignments where order_id = p_order_id and status = 'active';
-    perform public.close_order_unsuccessfully(p_order_id, v_user, v_note);
-    select * into v_order from public.orders where id = p_order_id;
-    if v_rider is not null then
+    update public.assignments set status = 'completed', completed_at = now() where order_id = p_order_id and status = 'active';
+  elsif p_status = 'cancelled' then
+    perform public.close_order_unsuccessfully(p_order_id, auth.uid(), v_note);
+    if v_rider is not null and not v_is_rider then
       perform public.notify(v_rider, 'order.cancelled', format('Order %s was cancelled', v_order.code), v_note, '/rider');
     end if;
   end if;
 
-  insert into public.order_status_history (order_id, from_status, to_status, actor_id, actor_kind, note)
-  values (p_order_id, v_from, p_status, v_user, v_actor, v_note);
+  perform public.record_transition(p_order_id, v_from, p_status, v_actor, v_note);
 
-  -- Customer notifications for meaningful milestones.
   if v_actor <> 'customer' then
-    if p_status = 'accepted' then
-      perform public.notify(v_order.customer_id, 'order.accepted', format('%s accepted your order', v_order.merchant_name),
-        format('Estimated ready in about %s minutes.', v_prep), '/orders/' || p_order_id);
-    elsif p_status = 'rejected' then
-      perform public.notify(v_order.customer_id, 'order.rejected', format('%s could not take your order', v_order.merchant_name),
-        v_note, '/orders/' || p_order_id);
-    elsif p_status = 'ready' and v_order.fulfillment = 'pickup' then
-      perform public.notify(v_order.customer_id, 'order.ready', 'Your order is ready for pickup',
-        v_order.merchant_name, '/orders/' || p_order_id);
-    elsif p_status = 'out_for_delivery' then
-      perform public.notify(v_order.customer_id, 'order.on_the_way', 'Your order is on the way',
-        v_order.merchant_name, '/orders/' || p_order_id);
+    if p_status = 'out_for_delivery' then
+      perform public.notify(v_order.customer_id, 'order.on_the_way', 'Your order is on the way', v_order.merchant_name, '/orders/' || p_order_id);
     elsif p_status = 'completed' then
-      perform public.notify(v_order.customer_id, 'order.completed', 'Order completed',
-        'Thanks for ordering. You can rate your order now.', '/orders/' || p_order_id);
+      perform public.notify(v_order.customer_id, 'order.completed', 'Order delivered',
+        'Thanks for ordering. You can rate the store now.', '/orders/' || p_order_id);
     elsif p_status = 'cancelled' then
       perform public.notify(v_order.customer_id, 'order.cancelled', format('Order %s was cancelled', v_order.code),
         v_note, '/orders/' || p_order_id);
     end if;
-  elsif p_status = 'cancelled' and v_from = 'pending' then
-    perform public.notify_merchant(v_order.merchant_id, 'order.cancelled',
-      format('Order %s was cancelled by the customer', v_order.code), null, '/merchant/orders/' || p_order_id);
   end if;
 
   if v_actor = 'admin' then
@@ -730,202 +784,12 @@ begin
       jsonb_build_object('from', v_from, 'to', p_status, 'note', v_note));
   end if;
 
+  select * into v_order from public.orders where id = p_order_id;
   return v_order;
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Riders
--- ---------------------------------------------------------------------------
-create or replace function public.assign_rider(p_order_id uuid, p_rider_id uuid)
-returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  v_order public.orders%rowtype;
-  v_rider public.rider_profiles%rowtype;
-  v_id uuid;
-begin
-  if not (public.has_role('admin') or public.has_role('support')) then
-    raise exception 'Not allowed.' using errcode = '42501';
-  end if;
-  select * into v_order from public.orders where id = p_order_id for update;
-  if not found or v_order.fulfillment <> 'delivery' or v_order.status not in ('pending', 'accepted', 'preparing', 'ready') then
-    raise exception 'Riders can be assigned only to open delivery orders.' using errcode = 'P0001', hint = 'invalid_assignment';
-  end if;
-  select * into v_rider from public.rider_profiles where user_id = p_rider_id;
-  if not found or v_rider.status <> 'active' then
-    raise exception 'This rider is not active.' using errcode = 'P0001', hint = 'rider_inactive';
-  end if;
-
-  update public.assignments set status = 'released', completed_at = now()
-  where order_id = p_order_id and status = 'active';
-  insert into public.assignments (order_id, rider_id, assigned_by) values (p_order_id, p_rider_id, auth.uid())
-  returning id into v_id;
-
-  perform public.notify(p_rider_id, 'assignment.new', format('New delivery %s', v_order.code),
-    format('Pick up from %s', v_order.merchant_name), '/rider');
-  perform public.log_audit('order.rider_assigned', 'order', p_order_id::text, jsonb_build_object('rider_id', p_rider_id));
-  return v_id;
-end $$;
-
--- ---------------------------------------------------------------------------
--- Payments (provider events are applied only by trusted server code)
--- ---------------------------------------------------------------------------
-create or replace function public.system_cancel_order(p_order_id uuid, p_reason text)
-returns void language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  v_order public.orders%rowtype;
-begin
-  select * into v_order from public.orders where id = p_order_id for update;
-  if not found or v_order.status in ('completed', 'cancelled', 'rejected') then
-    return;
-  end if;
-  update public.orders set status = 'cancelled', cancelled_at = now(), cancel_reason = p_reason where id = p_order_id;
-  perform public.close_order_unsuccessfully(p_order_id, null, p_reason);
-  insert into public.order_status_history (order_id, from_status, to_status, actor_kind, note)
-  values (p_order_id, v_order.status, 'cancelled', 'system', p_reason);
-  perform public.notify(v_order.customer_id, 'order.cancelled', format('Order %s was cancelled', v_order.code),
-    p_reason, '/orders/' || p_order_id);
-end $$;
-
--- Records the provider checkout session for an online payment attempt.
-create or replace function public.attach_checkout_session(
-  p_order_id uuid, p_provider_ref text, p_checkout_url text, p_expires_at timestamptz
-)
-returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  v_order public.orders%rowtype;
-  v_payment_id uuid;
-begin
-  select * into v_order from public.orders where id = p_order_id for update;
-  if not found or v_order.payment_method <> 'online' or v_order.status <> 'awaiting_payment' then
-    raise exception 'Order is not awaiting online payment.' using errcode = 'P0001', hint = 'not_awaiting_payment';
-  end if;
-
-  update public.payments set provider_ref = p_provider_ref, checkout_url = p_checkout_url, expires_at = p_expires_at
-  where id = (select id from public.payments where order_id = p_order_id and provider = 'paymongo'
-              and status = 'pending' and provider_ref is null limit 1)
-  returning id into v_payment_id;
-
-  if v_payment_id is null then
-    -- A retry after a failed attempt: supersede pending attempts, keep history.
-    update public.payments set status = 'cancelled'
-    where order_id = p_order_id and provider = 'paymongo' and status = 'pending';
-    insert into public.payments (order_id, provider, method, status, amount_minor, provider_ref, checkout_url, expires_at)
-    values (p_order_id, 'paymongo', 'online', 'pending', v_order.total_minor, p_provider_ref, p_checkout_url, p_expires_at)
-    returning id into v_payment_id;
-  end if;
-  update public.orders set payment_status = 'pending' where id = p_order_id;
-  return v_payment_id;
-end $$;
-
--- Applies a verified provider event exactly once.
--- p_event_type is normalized: payment.paid | payment.failed | payment.expired
-create or replace function public.apply_payment_event(
-  p_provider text, p_event_id text, p_event_type text, p_provider_ref text, p_amount_minor bigint, p_payload jsonb
-)
-returns text language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  v_event_id uuid;
-  v_payment public.payments%rowtype;
-  v_order public.orders%rowtype;
-  v_result text;
-begin
-  insert into public.payment_events (provider, event_id, event_type, provider_ref, payload)
-  values (p_provider, p_event_id, p_event_type, p_provider_ref, coalesce(p_payload, '{}'))
-  on conflict (provider, event_id) do nothing
-  returning id into v_event_id;
-  if v_event_id is null then
-    return 'duplicate';
-  end if;
-
-  select * into v_payment from public.payments where provider = p_provider and provider_ref = p_provider_ref for update;
-  if not found then
-    v_result := 'unknown_payment';
-  else
-    select * into v_order from public.orders where id = v_payment.order_id for update;
-
-    if p_event_type = 'payment.paid' then
-      if v_payment.status in ('paid', 'refunded', 'partially_refunded') then
-        v_result := 'already_paid';
-      elsif p_amount_minor is distinct from v_payment.amount_minor then
-        v_result := 'amount_mismatch';
-        perform public.notify_staff('payment.mismatch', format('Payment amount mismatch on %s', v_order.code),
-          format('Expected %s, provider reported %s.', public.format_php(v_payment.amount_minor),
-            public.format_php(coalesce(p_amount_minor, 0))), '/admin/payments');
-      else
-        update public.payments set status = 'paid', paid_at = now(), failure_reason = null where id = v_payment.id;
-        update public.orders set payment_status = 'paid' where id = v_order.id;
-        if v_order.status = 'awaiting_payment' then
-          update public.orders set status = 'pending' where id = v_order.id;
-          insert into public.order_status_history (order_id, from_status, to_status, actor_kind, note)
-          values (v_order.id, 'awaiting_payment', 'pending', 'system', 'Payment confirmed');
-          perform public.notify_merchant(v_order.merchant_id, 'order.new', format('New order %s', v_order.code),
-            format('%s · Paid online', public.format_php(v_order.subtotal_minor)), '/merchant/orders/' || v_order.id);
-          v_result := 'paid';
-        elsif v_order.status in ('cancelled', 'rejected') then
-          insert into public.refunds (order_id, payment_id, amount_minor, reason)
-          values (v_order.id, v_payment.id, v_payment.amount_minor, 'Payment received after the order was closed.');
-          perform public.notify_staff('refund.required', format('Refund needed for %s', v_order.code),
-            'Payment arrived after the order was closed.', '/admin/payments');
-          v_result := 'paid_after_close';
-        else
-          v_result := 'paid';
-        end if;
-      end if;
-    elsif p_event_type = 'payment.failed' then
-      if v_payment.status = 'pending' then
-        update public.payments set status = 'failed', failure_reason = coalesce(p_payload ->> 'failure_reason', 'Payment failed')
-        where id = v_payment.id;
-        if v_order.status = 'awaiting_payment' then
-          update public.orders set payment_status = 'failed' where id = v_order.id;
-        end if;
-        v_result := 'failed';
-      else
-        v_result := 'ignored';
-      end if;
-    elsif p_event_type = 'payment.expired' then
-      if v_payment.status = 'pending' then
-        update public.payments set status = 'expired' where id = v_payment.id;
-        if v_order.status = 'awaiting_payment' and not exists (
-          select 1 from public.payments where order_id = v_order.id and status in ('pending', 'paid')
-        ) then
-          perform public.system_cancel_order(v_order.id, 'Payment was not completed in time.');
-        end if;
-        v_result := 'expired';
-      else
-        v_result := 'ignored';
-      end if;
-    else
-      v_result := 'ignored';
-    end if;
-  end if;
-
-  update public.payment_events set processed_at = now(), result = v_result where id = v_event_id;
-  return v_result;
-end $$;
-
--- Cancels online orders whose payment window has passed. Run on a schedule.
-create or replace function public.expire_stale_orders()
-returns int language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  v_order record;
-  v_count int := 0;
-begin
-  for v_order in
-    select o.id from public.orders o, public.platform_settings s
-    where o.status = 'awaiting_payment'
-      and o.created_at < now() - make_interval(mins => s.payment_expiry_minutes)
-      and not exists (select 1 from public.payments p where p.order_id = o.id and p.status = 'paid')
-    for update of o skip locked
-  loop
-    update public.payments set status = 'expired' where order_id = v_order.id and status = 'pending';
-    perform public.system_cancel_order(v_order.id, 'Payment was not completed in time.');
-    v_count := v_count + 1;
-  end loop;
-  return v_count;
-end $$;
-
--- ---------------------------------------------------------------------------
--- Refunds
+-- Refunds (manual GCash transfers recorded by staff)
 -- ---------------------------------------------------------------------------
 create or replace function public.request_refund(p_order_id uuid, p_amount_minor bigint, p_reason text)
 returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
@@ -937,11 +801,9 @@ begin
   if not public.is_staff() then
     raise exception 'Not allowed.' using errcode = '42501';
   end if;
-  select * into v_payment from public.payments
-  where order_id = p_order_id and status in ('paid', 'partially_refunded')
-  order by paid_at desc limit 1 for update;
+  select * into v_payment from public.payments where order_id = p_order_id and status = 'paid' for update;
   if not found then
-    raise exception 'This order has no captured payment to refund.' using errcode = 'P0001', hint = 'no_payment';
+    raise exception 'This order has no confirmed payment to refund.' using errcode = 'P0001', hint = 'no_payment';
   end if;
   select coalesce(sum(amount_minor), 0) into v_open from public.refunds
   where payment_id = v_payment.id and status in ('requested', 'approved');
@@ -958,13 +820,12 @@ begin
   return v_id;
 end $$;
 
--- p_action: approve | reject | mark_processed
+-- p_action: approve | reject | mark_processed (with the GCash reference)
 create or replace function public.review_refund(p_refund_id uuid, p_action text, p_reference text default null)
 returns void language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_refund public.refunds%rowtype;
   v_payment public.payments%rowtype;
-  v_status public.payment_status;
   v_code text;
   v_customer uuid;
 begin
@@ -982,22 +843,22 @@ begin
     update public.refunds set status = 'rejected', reviewed_by = auth.uid() where id = p_refund_id;
   elsif p_action = 'mark_processed' and v_refund.status = 'approved' then
     if nullif(trim(p_reference), '') is null then
-      raise exception 'Enter the provider or transfer reference.' using errcode = 'P0001', hint = 'reference_required';
+      raise exception 'Enter the GCash reference of the refund transfer.' using errcode = 'P0001', hint = 'reference_required';
     end if;
     select * into v_payment from public.payments where id = v_refund.payment_id for update;
     if v_payment.refunded_minor + v_refund.amount_minor > v_payment.amount_minor then
-      raise exception 'Refund exceeds the captured amount.' using errcode = 'P0001', hint = 'refund_too_large';
+      raise exception 'Refund exceeds the amount paid.' using errcode = 'P0001', hint = 'refund_too_large';
     end if;
-    v_status := case when v_payment.refunded_minor + v_refund.amount_minor = v_payment.amount_minor
-                     then 'refunded' else 'partially_refunded' end;
-    update public.payments set refunded_minor = refunded_minor + v_refund.amount_minor, status = v_status
-    where id = v_payment.id;
+    update public.payments set refunded_minor = refunded_minor + v_refund.amount_minor,
+      status = case when refunded_minor + v_refund.amount_minor = amount_minor then 'refunded'::public.payment_status else status end
+    where id = v_payment.id returning * into v_payment;
     update public.refunds set status = 'processed', reference = trim(p_reference), processed_at = now(),
       reviewed_by = auth.uid() where id = p_refund_id;
-    update public.orders set payment_status = v_status where id = v_refund.order_id
+    update public.orders set payment_status = v_payment.status where id = v_refund.order_id
     returning code, customer_id into v_code, v_customer;
-    perform public.notify(v_customer, 'refund.processed', format('Refund processed for %s', v_code),
-      format('%s has been refunded.', public.format_php(v_refund.amount_minor)), '/orders/' || v_refund.order_id);
+    perform public.notify(v_customer, 'refund.processed', format('Refund sent for %s', v_code),
+      format('%s was sent back to your GCash (ref %s).', public.format_php(v_refund.amount_minor), trim(p_reference)),
+      '/orders/' || v_refund.order_id);
   else
     raise exception 'This refund cannot be changed that way.' using errcode = 'P0001', hint = 'invalid_transition';
   end if;
@@ -1007,111 +868,27 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Settlements
--- ---------------------------------------------------------------------------
-create or replace function public.generate_settlement(p_merchant_id uuid, p_start date, p_end date)
-returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  v_id uuid;
-  v_gross bigint;
-  v_commission bigint;
-  v_refunds bigint;
-  v_count int;
-begin
-  if not (public.has_role('admin') or public.has_role('finance')) then
-    raise exception 'Not allowed.' using errcode = '42501';
-  end if;
-  if p_end < p_start or p_end >= (now() at time zone 'Asia/Manila')::date then
-    raise exception 'Choose a period that has already ended.' using errcode = 'P0001', hint = 'invalid_period';
-  end if;
-  if exists (select 1 from public.settlements where merchant_id = p_merchant_id
-             and daterange(period_start, period_end, '[]') && daterange(p_start, p_end, '[]')) then
-    raise exception 'A settlement already covers part of this period.' using errcode = 'P0001', hint = 'overlap';
-  end if;
-
-  perform 1 from public.merchants where id = p_merchant_id for update;
-
-  select count(*), coalesce(sum(c.base_minor), 0), coalesce(sum(c.amount_minor), 0)
-  into v_count, v_gross, v_commission
-  from public.commissions c join public.orders o on o.id = c.order_id
-  where c.merchant_id = p_merchant_id and c.settlement_id is null
-    and (o.completed_at at time zone 'Asia/Manila')::date between p_start and p_end;
-
-  select coalesce(sum(r.amount_minor), 0) into v_refunds
-  from public.refunds r
-  join public.commissions c on c.order_id = r.order_id
-  join public.orders o on o.id = r.order_id
-  where c.merchant_id = p_merchant_id and c.settlement_id is null and r.status = 'processed'
-    and (o.completed_at at time zone 'Asia/Manila')::date between p_start and p_end;
-
-  insert into public.settlements (merchant_id, period_start, period_end, order_count, gross_minor,
-    commission_minor, refunds_minor, net_minor, created_by)
-  values (p_merchant_id, p_start, p_end, v_count, v_gross, v_commission, v_refunds,
-    v_gross - v_commission - v_refunds, auth.uid())
-  returning id into v_id;
-
-  update public.commissions c set settlement_id = v_id
-  from public.orders o
-  where o.id = c.order_id and c.merchant_id = p_merchant_id and c.settlement_id is null
-    and (o.completed_at at time zone 'Asia/Manila')::date between p_start and p_end;
-
-  perform public.log_audit('settlement.generated', 'settlement', v_id::text,
-    jsonb_build_object('merchant_id', p_merchant_id, 'net_minor', v_gross - v_commission - v_refunds));
-  return v_id;
-end $$;
-
-create or replace function public.update_settlement_status(p_settlement_id uuid, p_status public.settlement_status, p_reference text default null)
-returns void language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  v_settlement public.settlements%rowtype;
-begin
-  if not (public.has_role('admin') or public.has_role('finance')) then
-    raise exception 'Not allowed.' using errcode = '42501';
-  end if;
-  select * into v_settlement from public.settlements where id = p_settlement_id for update;
-  if not found then
-    raise exception 'Settlement not found.' using errcode = 'P0001';
-  end if;
-  if v_settlement.status = 'draft' and p_status = 'approved' then
-    update public.settlements set status = 'approved', approved_by = auth.uid() where id = p_settlement_id;
-  elsif v_settlement.status = 'approved' and p_status = 'paid' then
-    if nullif(trim(p_reference), '') is null then
-      raise exception 'Enter the payout reference.' using errcode = 'P0001', hint = 'reference_required';
-    end if;
-    update public.settlements set status = 'paid', paid_at = now(), reference = trim(p_reference) where id = p_settlement_id;
-    perform public.notify_merchant(v_settlement.merchant_id, 'settlement.paid', 'Payout sent',
-      format('%s for %s to %s', public.format_php(v_settlement.net_minor), v_settlement.period_start, v_settlement.period_end),
-      '/merchant/finances');
-  else
-    raise exception 'This settlement cannot move to %.', p_status using errcode = 'P0001', hint = 'invalid_transition';
-  end if;
-  perform public.log_audit('settlement.' || p_status, 'settlement', p_settlement_id::text,
-    jsonb_build_object('reference', p_reference));
-end $$;
-
--- ---------------------------------------------------------------------------
 -- Execute permissions
 -- ---------------------------------------------------------------------------
 revoke execute on function public.notify_merchant(uuid, text, text, text, text) from public, anon, authenticated;
-revoke execute on function public.compute_checkout(uuid, uuid, public.fulfillment_type, uuid, text) from public, anon, authenticated;
+revoke execute on function public.notify_area_riders(uuid, text, text, text) from public, anon, authenticated;
+revoke execute on function public.compute_checkout(uuid, uuid, uuid, text) from public, anon, authenticated;
 revoke execute on function public.close_order_unsuccessfully(uuid, uuid, text) from public, anon, authenticated;
-revoke execute on function public.system_cancel_order(uuid, text) from public, anon, authenticated;
-revoke execute on function public.attach_checkout_session(uuid, text, text, timestamptz) from public, anon, authenticated;
-revoke execute on function public.apply_payment_event(text, text, text, text, bigint, jsonb) from public, anon, authenticated;
-revoke execute on function public.expire_stale_orders() from public, anon, authenticated;
-grant execute on function public.attach_checkout_session(uuid, text, text, timestamptz) to service_role;
-grant execute on function public.apply_payment_event(text, text, text, text, bigint, jsonb) to service_role;
-grant execute on function public.expire_stale_orders() to service_role;
+revoke execute on function public.start_assignment(uuid, uuid, uuid) from public, anon, authenticated;
+revoke execute on function public.record_transition(uuid, public.order_status, public.order_status, text, text) from public, anon, authenticated;
+revoke execute on function public.assert_configuration(uuid, uuid, jsonb, int) from public, anon, authenticated;
 
 revoke execute on function public.cart_add_item(uuid, uuid, jsonb, int, text) from public, anon;
 revoke execute on function public.cart_update_item(uuid, uuid, jsonb, int, text) from public, anon;
 revoke execute on function public.cart_set_quantity(uuid, int) from public, anon;
 revoke execute on function public.cart_clear(uuid) from public, anon;
-revoke execute on function public.quote_checkout(uuid, public.fulfillment_type, uuid, text) from public, anon;
-revoke execute on function public.place_order(uuid, public.fulfillment_type, uuid, public.payment_method, text, text, bigint, text) from public, anon;
-revoke execute on function public.update_order_status(uuid, public.order_status, text, int) from public, anon;
+revoke execute on function public.quote_checkout(uuid, uuid, text) from public, anon;
+revoke execute on function public.place_order(uuid, uuid, text, text, bigint, text) from public, anon;
+revoke execute on function public.rider_accept_order(uuid) from public, anon;
+revoke execute on function public.rider_release_order(uuid, text) from public, anon;
 revoke execute on function public.assign_rider(uuid, uuid) from public, anon;
+revoke execute on function public.submit_gcash_payment(uuid, text, text) from public, anon;
+revoke execute on function public.confirm_gcash_payment(uuid, boolean, text) from public, anon;
+revoke execute on function public.update_order_status(uuid, public.order_status, text) from public, anon;
 revoke execute on function public.request_refund(uuid, bigint, text) from public, anon;
 revoke execute on function public.review_refund(uuid, text, text) from public, anon;
-revoke execute on function public.generate_settlement(uuid, date, date) from public, anon;
-revoke execute on function public.update_settlement_status(uuid, public.settlement_status, text) from public, anon;

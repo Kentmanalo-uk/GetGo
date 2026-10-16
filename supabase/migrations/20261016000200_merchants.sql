@@ -20,9 +20,6 @@ create table public.partner_applications (
   service_area_id uuid references public.service_areas (id),
   -- [{ "weekday": 0-6, "opens": "HH:MM", "closes": "HH:MM" }]
   hours jsonb not null default '[]' check (jsonb_typeof(hours) = 'array'),
-  prep_time_minutes int check (prep_time_minutes is null or prep_time_minutes between 5 and 180),
-  supports_delivery boolean not null default true,
-  supports_pickup boolean not null default false,
   logo_path text,
   cover_path text,
   -- [{ "name": text, "description": text, "price_minor": int, "category": text }]
@@ -81,18 +78,14 @@ create table public.merchants (
   cover_path text,
   status public.merchant_status not null default 'active',
   is_published boolean not null default false,
+  -- Temporary closure set by the store (e.g. sold out for the day).
   accepting_orders boolean not null default true,
   paused_until timestamptz,
-  prep_time_minutes int not null default 20 check (prep_time_minutes between 5 and 180),
   min_order_minor bigint not null default 0 check (min_order_minor >= 0),
-  supports_delivery boolean not null default true,
-  supports_pickup boolean not null default false,
-  commission_bps int not null check (commission_bps between 0 and 5000),
   currency char(3) not null default 'PHP' check (currency = 'PHP'),
   application_id uuid references public.partner_applications (id) on delete set null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  check (supports_delivery or supports_pickup)
+  updated_at timestamptz not null default now()
 );
 create index merchants_area_idx on public.merchants (service_area_id) where is_published and status = 'active';
 create trigger merchants_touch before update on public.merchants
@@ -236,11 +229,11 @@ revoke all on public.partner_applications, public.application_documents, public.
 -- status and review fields change only through workflow functions.
 grant select on public.partner_applications to authenticated;
 grant insert (business_name, category, description, owner_name, owner_phone, owner_email, business_phone,
-  address_line, barangay, city, service_area_id, hours, prep_time_minutes, supports_delivery, supports_pickup,
-  logo_path, cover_path, menu_items) on public.partner_applications to authenticated;
+  address_line, barangay, city, service_area_id, hours, logo_path, cover_path, menu_items)
+  on public.partner_applications to authenticated;
 grant update (business_name, category, description, owner_name, owner_phone, owner_email, business_phone,
-  address_line, barangay, city, service_area_id, hours, prep_time_minutes, supports_delivery, supports_pickup,
-  logo_path, cover_path, menu_items) on public.partner_applications to authenticated;
+  address_line, barangay, city, service_area_id, hours, logo_path, cover_path, menu_items)
+  on public.partner_applications to authenticated;
 create policy partner_applications_select on public.partner_applications for select to authenticated
   using (applicant_id = auth.uid() or public.has_role('admin') or public.has_role('support'));
 create policy partner_applications_insert on public.partner_applications for insert to authenticated
@@ -264,9 +257,9 @@ create policy application_documents_delete on public.application_documents for d
 
 -- merchants: members and staff read the full record (the public storefront is
 -- exposed through the storefronts view); owners/managers edit profile fields.
+-- Stores only maintain their catalog; they do not handle orders.
 grant select on public.merchants to authenticated;
-grant update (name, description, phone, logo_path, cover_path, prep_time_minutes, min_order_minor,
-  supports_delivery, supports_pickup) on public.merchants to authenticated;
+grant update (name, description, phone, logo_path, cover_path, min_order_minor) on public.merchants to authenticated;
 create policy merchants_select on public.merchants for select to authenticated
   using (public.is_merchant_member(id) or public.is_staff());
 create policy merchants_update on public.merchants for update to authenticated

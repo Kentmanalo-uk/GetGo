@@ -1,0 +1,163 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/plus-jakarta-sans';
+
+/*
+ * GETGO design tokens.
+ * Pink is the brand accent for primary actions, selection and meaningful emphasis.
+ * Text and structure are carried by ink and neutral surfaces.
+ */
+@theme {
+  --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-ink: #16141a;
+  --color-ink-2: #45424b;
+  --color-ink-3: #6d6973;
+  --color-ink-4: #9d99a3;
+  --color-line: #e8e5eb;
+  --color-line-strong: #d3cfd8;
+  --color-canvas: #f7f5f8;
+  --color-surface: #ffffff;
+  --color-accent: #ff4f9a;
+  --color-accent-strong: #f2337f;
+  --color-accent-soft: #fff0f6;
+  --color-accent-ink: #b3125c;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdf0ee;
+  --color-warning: #8a5300;
+  --color-warning-soft: #fff6e5;
+  --color-info: #1f5aa6;
+
+  /* Type scale: size / line-height pairs. */
+  --text-display: 1.75rem;
+  --text-display--line-height: 2.125rem;
+  --text-display--letter-spacing: -0.02em;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.625rem;
+  --text-title--letter-spacing: -0.01em;
+  --text-heading: 1.0625rem;
+  --text-heading--line-height: 1.5rem;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.375rem;
+  --text-small: 0.8125rem;
+  --text-small--line-height: 1.125rem;
+  --text-micro: 0.75rem;
+  --text-micro--line-height: 1rem;
+
+  --radius-control: 0.5rem;
+  --radius-media: 0.75rem;
+  --radius-sheet: 1rem;
+
+  --shadow-sheet: 0 -8px 32px rgb(22 20 26 / 0.12);
+  --shadow-pop: 0 8px 28px rgb(22 20 26 / 0.14), 0 1px 3px rgb(22 20 26 / 0.08);
+
+  --breakpoint-xs: 380px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-surface font-sans text-body text-ink antialiased;
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: var(--color-accent);
+  }
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em); /* prevents iOS focus zoom */
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .page-x {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* Native <dialog> used for sheets and dialogs. */
+dialog.sheet {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-width: 100vw;
+  max-height: 100dvh;
+  background: transparent;
+  color: inherit;
+}
+dialog.sheet[open] {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+@media (min-width: 640px) {
+  dialog.sheet[open] {
+    align-items: center;
+    padding: 1.5rem;
+  }
+}
+dialog.sheet::backdrop {
+  background: rgb(22 20 26 / 0.45);
+}
+@media (prefers-reduced-motion: no-preference) {
+  dialog.sheet[open] .sheet-panel {
+    animation: sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @media (min-width: 640px) {
+    dialog.sheet[open] .sheet-panel {
+      animation: dialog-in 160ms ease-out;
+    }
+  }
+  .skeleton {
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0.6;
+  }
+}
+@keyframes dialog-in {
+  from {
+    transform: scale(0.98);
+    opacity: 0;
+  }
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
