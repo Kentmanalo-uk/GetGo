@@ -8,6 +8,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { FormError, Notice } from '@/components/ui/Feedback';
 import { useToast } from '@/components/ui/Toast';
 import { HoursEditor } from '@/components/HoursEditor';
+import { BarangayField } from '@/components/BarangayField';
 import { validateHours, type HoursEntry } from '@/domain/hours';
 import { CATEGORY_LABELS, type MerchantCategory } from '@/types/models';
 import { useAllServiceAreas, useCreateStore } from './api';
@@ -43,6 +44,7 @@ export function CreateStoreForm({ onCancel }: { onCancel: () => void }) {
     defaultValues: { ownerEmail: '', name: '', category: undefined, description: '', phone: '', address_line: '', barangay: '', city: '', service_area_id: '' },
   });
   const e = form.formState.errors;
+  const selectedArea = areas.data?.find((a) => a.id === form.watch('service_area_id')) ?? null;
 
   const onSubmit = form.handleSubmit(async ({ ownerEmail, ...store }) => {
     const problem = hours.length ? validateHours(hours) : null;
@@ -87,20 +89,20 @@ export function CreateStoreForm({ onCancel }: { onCancel: () => void }) {
       <Field label="Description" optional error={e.description?.message}>
         {(p) => <Textarea {...p} rows={2} maxLength={600} {...form.register('description')} />}
       </Field>
-      <Field label="Street address" error={e.address_line?.message}>
-        {(p) => <Input {...p} {...form.register('address_line')} />}
-      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Barangay" error={e.barangay?.message}>
-          {(p) => <Input {...p} {...form.register('barangay')} />}
-        </Field>
-        <Field label="City / municipality" error={e.city?.message}>
-          {(p) => <Input {...p} {...form.register('city')} />}
-        </Field>
-        <Field label="Service area" error={e.service_area_id?.message}>
+        <Field label="Town" error={e.service_area_id?.message}>
           {(p) => (
-            <Select {...p} {...form.register('service_area_id')} disabled={areas.isPending}>
-              <option value="">{areas.isPending ? 'Loading…' : 'Choose an area'}</option>
+            <Select
+              {...p}
+              {...form.register('service_area_id', {
+                onChange: (ev) => {
+                  form.setValue('city', areas.data?.find((a) => a.id === ev.target.value)?.city ?? '');
+                  form.setValue('barangay', '');
+                },
+              })}
+              disabled={areas.isPending}
+            >
+              <option value="">{areas.isPending ? 'Loading…' : 'Choose a town'}</option>
               {areas.data?.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -110,6 +112,23 @@ export function CreateStoreForm({ onCancel }: { onCancel: () => void }) {
             </Select>
           )}
         </Field>
+        <BarangayField
+          municipalityCode={selectedArea?.psgc_code}
+          value={form.watch('barangay')}
+          error={e.barangay?.message}
+          disabled={!selectedArea}
+          onChange={({ name }) => form.setValue('barangay', name, { shouldValidate: form.formState.isSubmitted })}
+        />
+        {selectedArea && !selectedArea.psgc_code && (
+          <Field label="City / municipality" error={e.city?.message}>
+            {(p) => <Input {...p} {...form.register('city')} />}
+          </Field>
+        )}
+      </div>
+      <Field label="Street address" hint="Building, house number, street or purok." error={e.address_line?.message}>
+        {(p) => <Input {...p} {...form.register('address_line')} />}
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Store phone" optional error={e.phone?.message}>
           {(p) => <Input {...p} type="tel" {...form.register('phone')} />}
         </Field>

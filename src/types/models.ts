@@ -39,6 +39,9 @@ export interface ServiceArea {
   small_order_threshold_minor: number | null;
   small_order_fee_minor: number;
   typical_delivery_minutes: number | null;
+  /** PSGC city/municipality code (official list), when picked from it. */
+  psgc_code: string | null;
+  province_code: string | null;
 }
 
 export interface Address {
@@ -52,6 +55,7 @@ export interface Address {
   landmark: string | null;
   service_area_id: string;
   is_default: boolean;
+  barangay_code: string | null;
 }
 
 export interface Storefront {

@@ -13,6 +13,7 @@ import { PageHeader, formatDateTime } from '@/components/ui/Display';
 import { cx } from '@/components/ui/cx';
 import { HoursEditor } from '@/components/HoursEditor';
 import { ImageUpload } from '@/components/ImageUpload';
+import { BarangayField } from '@/components/BarangayField';
 import { Logo } from '@/components/Logo';
 import { summarizeHours, validateHours, type HoursEntry } from '@/domain/hours';
 import { formatMoney, parsePesos, toPesoInput } from '@/domain/money';
@@ -163,6 +164,7 @@ function LocationStep({ app, next, back }: StepProps) {
     },
   });
   const e = form.formState.errors;
+  const area = areas.data?.find((a) => a.id === form.watch('service_area_id')) ?? null;
   return (
     <form
       noValidate
@@ -172,28 +174,42 @@ function LocationStep({ app, next, back }: StepProps) {
       })}
     >
       <FormError error={save.error} />
-      <Field label="Street address" hint="Building, house number and street." error={e.address_line?.message}>
-        {(p) => <Input {...p} autoComplete="address-line1" {...form.register('address_line')} />}
-      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Barangay" error={e.barangay?.message}>
-          {(p) => <Input {...p} {...form.register('barangay')} />}
+        <Field label="Town" error={e.service_area_id?.message} hint="Customers in this town will see your store.">
+          {(p) => (
+            <Select
+              {...p}
+              {...form.register('service_area_id', {
+                onChange: (ev) => {
+                  form.setValue('city', areas.data?.find((a) => a.id === ev.target.value)?.city ?? '');
+                  form.setValue('barangay', '');
+                },
+              })}
+            >
+              <option value="">Choose town</option>
+              {areas.data?.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}, {a.province}
+                </option>
+              ))}
+            </Select>
+          )}
         </Field>
+        <BarangayField
+          municipalityCode={area?.psgc_code}
+          value={form.watch('barangay')}
+          error={e.barangay?.message}
+          disabled={!area}
+          onChange={({ name }) => form.setValue('barangay', name, { shouldValidate: form.formState.isSubmitted })}
+        />
+      </div>
+      {area && !area.psgc_code && (
         <Field label="City / municipality" error={e.city?.message}>
           {(p) => <Input {...p} {...form.register('city')} />}
         </Field>
-      </div>
-      <Field label="GETGO service area" error={e.service_area_id?.message} hint="Customers in this area will see your store.">
-        {(p) => (
-          <Select {...p} {...form.register('service_area_id')}>
-            <option value="">Choose area</option>
-            {areas.data?.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} — {a.city}, {a.province}
-              </option>
-            ))}
-          </Select>
-        )}
+      )}
+      <Field label="Street address" hint="Building, house number, street or purok." error={e.address_line?.message}>
+        {(p) => <Input {...p} autoComplete="address-line1" {...form.register('address_line')} />}
       </Field>
       {areas.data?.length === 0 && (
         <Notice tone="warning">GETGO isn’t operating in any area yet. You can save your application and submit it once your area opens.</Notice>

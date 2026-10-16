@@ -5,11 +5,12 @@ import { z } from 'zod';
 import { MapPin, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState, FormError } from '@/components/ui/Feedback';
-import { Field, Input, Switch } from '@/components/ui/Field';
+import { Field, Input, Select, Switch } from '@/components/ui/Field';
 import { PageHeader, StatusText } from '@/components/ui/Display';
 import { ConfirmDialog, Sheet } from '@/components/ui/Sheet';
 import { useToast } from '@/components/ui/Toast';
 import { formatMoney, parsePesos, toPesoInput } from '@/domain/money';
+import { usePsgcMunicipalities, usePsgcProvinces } from '@/lib/psgc';
 import type { ServiceArea } from '@/types/models';
 import { useAllServiceAreas, useDeleteServiceArea, usePermissions, useSaveServiceArea } from './api';
 import { DataTable, ListSkeleton, RoleNote } from './ui';
@@ -53,6 +54,11 @@ function AreaForm({ area, onDone }: { area: ServiceArea | null; onDone: () => vo
   const remove = useDeleteServiceArea();
   const toast = useToast();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // Official PSGC location (optional): lets customers pick barangays from the official list.
+  const [provinceCode, setProvinceCode] = useState<string | null>(area?.province_code ?? null);
+  const [psgcCode, setPsgcCode] = useState<string | null>(area?.psgc_code ?? null);
+  const provinces = usePsgcProvinces();
+  const municipalities = usePsgcMunicipalities(provinceCode);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -82,6 +88,8 @@ function AreaForm({ area, onDone }: { area: ServiceArea | null; onDone: () => vo
         small_order_threshold_minor: v.small_order_threshold ? parsePesos(v.small_order_threshold) : null,
         small_order_fee_minor: parsePesos(v.small_order_fee)!,
         typical_delivery_minutes: v.typical_delivery_minutes ? Number(v.typical_delivery_minutes) : null,
+        psgc_code: psgcCode,
+        province_code: psgcCode ? provinceCode : null,
       });
       toast(area ? 'Area saved' : 'Area added');
       onDone();
@@ -93,14 +101,62 @@ function AreaForm({ area, onDone }: { area: ServiceArea | null; onDone: () => vo
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       <FormError error={save.error} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Province" hint="From the official PSGC list.">
+          {(p) => (
+            <Select
+              {...p}
+              value={provinceCode ?? ''}
+              disabled={provinces.isPending || provinces.isError}
+              onChange={(e) => {
+                const code = e.target.value || null;
+                setProvinceCode(code);
+                setPsgcCode(null);
+                form.setValue('province', provinces.data?.find((x) => x.code === code)?.name ?? '');
+              }}
+            >
+              <option value="">{provinces.isError ? 'List unavailable — type below' : provinces.isPending ? 'Loading…' : 'Choose province'}</option>
+              {provinces.data?.map((x) => (
+                <option key={x.code} value={x.code}>
+                  {x.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <Field label="City or municipality" hint="Customers then pick their barangay from this town’s list.">
+          {(p) => (
+            <Select
+              {...p}
+              value={psgcCode ?? ''}
+              disabled={!provinceCode || municipalities.isPending}
+              onChange={(e) => {
+                const town = municipalities.data?.find((x) => x.code === e.target.value);
+                setPsgcCode(town?.code ?? null);
+                if (town) {
+                  form.setValue('city', town.name);
+                  if (!form.getValues('name')) form.setValue('name', town.name);
+                }
+              }}
+            >
+              <option value="">{provinceCode ? 'Choose city or municipality' : 'Choose a province first'}</option>
+              {municipalities.data?.map((x) => (
+                <option key={x.code} value={x.code}>
+                  {x.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+      </div>
       <Field label="Area name" error={errors.name?.message} hint="Shown to customers, e.g. “Tagum City”.">
         {(p) => <Input {...p} {...form.register('name')} />}
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="City or municipality" error={errors.city?.message}>
+        <Field label="City name" error={errors.city?.message} hint="Filled from the list; edit if needed.">
           {(p) => <Input {...p} {...form.register('city')} />}
         </Field>
-        <Field label="Province" error={errors.province?.message}>
+        <Field label="Province name" error={errors.province?.message}>
           {(p) => <Input {...p} {...form.register('province')} />}
         </Field>
         <Field label="Delivery fee" error={errors.delivery_fee?.message}>
