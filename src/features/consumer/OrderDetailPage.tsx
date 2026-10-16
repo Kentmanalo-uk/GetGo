@@ -68,7 +68,7 @@ function CopyValue({ label, value }: { label: string; value: string }) {
 
 /** Tells the customer exactly where and how much to send, and takes the reference. */
 function GcashPayment({ order }: { order: OrderWithItems }) {
-  const payment = order.payments[0];
+  const payment = order.payments;
   const submit = useSubmitGcashPayment();
   const toast = useToast();
   const [reference, setReference] = useState('');
@@ -212,7 +212,7 @@ export default function OrderDetailPage() {
   }
 
   const rider = order.assignments.find((a) => a.status !== 'released')?.rider ?? null;
-  const payment = order.payments[0];
+  const payment = order.payments;
   const justPlaced = params.get('placed') === '1' && order.status === 'pending';
 
   return (

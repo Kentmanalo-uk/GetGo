@@ -32,6 +32,7 @@ npm run dev
 | `npm run dev` | Dev server |
 | `npm run typecheck` | TypeScript, app and tooling |
 | `npm test` | Unit tests + database tests (PGlite, no Docker needed) |
+| `npm run test:live` | End-to-end check against the real Supabase project: auth, every query and function the app uses, RLS, Storage uploads/privacy and Realtime. It creates throwaway `e2e…` data and deletes it. Needs `SUPABASE_SERVICE_ROLE_KEY` set in your shell (never in a file in the repo). |
 | `npm run build` | Typecheck and production build to `dist/` |
 
 ## Database

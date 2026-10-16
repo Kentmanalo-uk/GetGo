@@ -270,7 +270,8 @@ export interface OrderRider {
 
 export interface OrderWithItems extends Order {
   order_items: OrderItem[];
-  payments: OrderPayment[];
+  /** One payment per order (payments.order_id is unique), so the API embeds an object. */
+  payments: OrderPayment | null;
   assignments: OrderRider[];
 }
 

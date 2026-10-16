@@ -205,7 +205,7 @@ function AvailableOrder({ order }: { order: OrderWithItems }) {
 
 function MyOrder({ order }: { order: OrderWithItems }) {
   const toast = useToast();
-  const payment = order.payments[0];
+  const payment = order.payments;
   const update = useUpdateOrderStatus();
   const confirm = useRiderMutation((args: { received: boolean; note?: string }) =>
     supabase.rpc('confirm_gcash_payment', { p_order_id: order.id, p_received: args.received, p_note: args.note ?? null }).then(unwrap),
