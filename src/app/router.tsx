@@ -45,6 +45,11 @@ const consumerRoutes: RouteObject[] = [
   { path: 'search', lazy: lazy(() => import('@/features/consumer/SearchPage')) },
   { path: 'explore', lazy: lazy(() => import('@/features/consumer/ExplorePage')) },
   { path: 'stores/:slug', lazy: lazy(() => import('@/features/consumer/StorePage')) },
+  {
+    path: 'stores/:slug/items/:productId',
+    handle: { hideNav: true } satisfies RouteHandle,
+    lazy: lazy(() => import('@/features/consumer/ProductPage')),
+  },
   { path: 'cart', lazy: lazy(() => import('@/features/consumer/CartPage')) },
   { path: 'orders', lazy: lazy(() => import('@/features/consumer/OrdersPage')) },
   { path: 'account', lazy: lazyNamed(() => import('@/features/consumer/AccountPages'), 'AccountPage') },

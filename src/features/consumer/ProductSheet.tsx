@@ -119,22 +119,24 @@ function GroupSection({
   );
 }
 
-export function ProductSheet({
-  product,
-  open,
-  onClose,
-  editing,
-  storeOpen,
-  preview,
-}: {
+interface CustomizerOptions {
   product: ProductRow | null;
-  open: boolean;
-  onClose: () => void;
+  /** Resets the configuration whenever this becomes true (or the product changes). */
+  active: boolean;
   editing?: EditingLine | null;
   storeOpen: boolean;
   /** Merchant preview: fully interactive, but nothing is added to a cart. */
   preview?: boolean;
-}) {
+  /** Called after the item is added or updated. */
+  onDone: () => void;
+}
+
+/**
+ * Customizer state and UI shared by the item page and the edit/preview sheet.
+ * Returns the options (sizes, choices, instructions) and the action bar
+ * (quantity, add button and notices) so each screen can lay them out.
+ */
+export function useProductCustomizer({ product, active, editing, storeOpen, preview, onDone }: CustomizerOptions) {
   const { status } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -149,7 +151,7 @@ export function ProductSheet({
   const mutation = editing ? update : add;
 
   useEffect(() => {
-    if (!configurable || !open) return;
+    if (!configurable || !active) return;
     if (editing) {
       setConfig({
         variantId: editing.variantId,
@@ -164,11 +166,9 @@ export function ProductSheet({
     setShowErrors(false);
     add.reset();
     update.reset();
-  }, [configurable, open, editing]); // mutation objects are intentionally omitted (new identity each render)
+  }, [configurable, active, editing]); // mutation objects are intentionally omitted (new identity each render)
 
-  if (!product || !configurable || !config) {
-    return <Sheet open={false} onClose={onClose} title="">{null}</Sheet>;
-  }
+  if (!product || !configurable || !config) return null;
 
   const result = evaluate(configurable, config);
   const summary = summarize(configurable, config);
@@ -202,7 +202,7 @@ export function ProductSheet({
       if (editing) await update.mutateAsync({ ...line, cartItemId: editing.cartItemId });
       else await add.mutateAsync(line);
       toast(editing ? 'Item updated' : `Added ${config.quantity > 1 ? `${config.quantity} × ` : ''}${product.name}`);
-      onClose();
+      onDone();
     } catch {
       /* shown inline */
     }
@@ -216,6 +216,115 @@ export function ProductSheet({
       : soldOut
         ? 'Sold out'
         : `${editing ? 'Update' : 'Add'}${config.quantity > 1 ? ` ${config.quantity}` : ''} · ${formatMoney(result.totalMinor)}`;
+
+  const priceLabel = configurable.variants.length > 1 ? `From ${formatMoney(lowestPrice(configurable))}` : formatMoney(lowestPrice(configurable));
+
+  const options = (
+    <>
+      <div className="divide-y divide-line">
+        {configurable.variants.length > 0 && (
+          <section
+            ref={(el) => void sections.current.set('__variant', el)}
+            tabIndex={-1}
+            aria-labelledby="variant-heading"
+            className="scroll-mt-24 py-4 outline-none"
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <h3 id="variant-heading" className="font-semibold">
+                Size
+              </h3>
+              <span className={cx('text-small', variantError ? 'font-semibold text-danger' : 'text-ink-2')}>{variantError ?? 'Required · pick 1'}</span>
+            </div>
+            <div role="radiogroup" aria-labelledby="variant-heading" className="mt-1 divide-y divide-line">
+              {configurable.variants.map((v) => (
+                <ChoiceRow
+                  key={v.id}
+                  type="radio"
+                  name="variant"
+                  checked={config.variantId === v.id}
+                  disabled={!v.is_available}
+                  onChange={() => setConfig({ ...config, variantId: v.id })}
+                  label={v.name}
+                  meta={v.is_available ? formatMoney(v.price_minor) : 'Sold out'}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {configurable.groups.map((group) => (
+          <GroupSection
+            key={group.id}
+            group={group}
+            config={config}
+            setConfig={setConfig}
+            error={showErrors ? result.groupErrors[group.id] : undefined}
+            sectionRef={(el) => void sections.current.set(group.id, el)}
+          />
+        ))}
+
+        <div className="py-4">
+          <Field label="Special instructions" optional hint="The store sees this note. It can’t add paid extras.">
+            {(p) => (
+              <Textarea {...p} rows={2} maxLength={200} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Less spicy, no onions…" />
+            )}
+          </Field>
+        </div>
+      </div>
+      {showErrors && result.error && !result.error.groupId && result.error.code !== 'variant_required' && (
+        <Notice tone="danger">{result.error.message}</Notice>
+      )}
+    </>
+  );
+
+  const actions = (
+    <div className="space-y-3">
+      {summary.length > 0 && <p className="line-clamp-2 text-small text-ink-3">{summary.join(' · ')}</p>}
+      {mutation.error && <Notice tone="danger">{userMessage(mutation.error)}</Notice>}
+      {preview && <p className="text-small text-ink-3">This is how customers see this item. Nothing is added to a cart.</p>}
+      {!preview && !storeOpen && !editing && (
+        <Notice tone="warning">This store can’t take orders right now. You can add items and check out when it opens.</Notice>
+      )}
+      <div className="flex items-center gap-3">
+        <QuantityStepper
+          label="quantity"
+          value={config.quantity}
+          min={1}
+          max={product.max_per_order}
+          onChange={(quantity) => setConfig({ ...config, quantity })}
+          disabled={soldOut}
+        />
+        <Button size="lg" className="flex-1" onClick={submit} loading={mutation.isPending} disabled={soldOut && status === 'signed_in'}>
+          <span className="tabular">{buttonLabel}</span>
+        </Button>
+      </div>
+    </div>
+  );
+
+  return { priceLabel, options, actions };
+}
+
+/** Bottom sheet used to edit a cart line at checkout and for the store owner's preview. */
+export function ProductSheet({
+  product,
+  open,
+  onClose,
+  editing,
+  storeOpen,
+  preview,
+}: {
+  product: ProductRow | null;
+  open: boolean;
+  onClose: () => void;
+  editing?: EditingLine | null;
+  storeOpen: boolean;
+  preview?: boolean;
+}) {
+  const customizer = useProductCustomizer({ product, active: open, editing, storeOpen, preview, onDone: onClose });
+
+  if (!product || !customizer) {
+    return <Sheet open={false} onClose={onClose} title="">{null}</Sheet>;
+  }
 
   return (
     <Sheet
@@ -239,97 +348,13 @@ export function ProductSheet({
           </div>
         ) : undefined
       }
-      footer={
-        <div className="space-y-3">
-          {summary.length > 0 && <p className="text-small text-ink-3 line-clamp-2">{summary.join(' · ')}</p>}
-          {mutation.error && <Notice tone="danger">{userMessage(mutation.error)}</Notice>}
-          {preview && <p className="text-small text-ink-3">This is how customers see this item. Nothing is added to a cart.</p>}
-          {!preview && !storeOpen && !editing && (
-            <Notice tone="warning">This store can’t take orders right now. You can add items and check out when it opens.</Notice>
-          )}
-          <div className="flex items-center gap-3">
-            <QuantityStepper
-              label="quantity"
-              value={config.quantity}
-              min={1}
-              max={product.max_per_order}
-              onChange={(quantity) => setConfig({ ...config, quantity })}
-              disabled={soldOut}
-            />
-            <Button size="lg" className="flex-1" onClick={submit} loading={mutation.isPending} disabled={soldOut && status === 'signed_in'}>
-              <span className="tabular">{buttonLabel}</span>
-            </Button>
-          </div>
-        </div>
-      }
+      footer={customizer.actions}
     >
       <div>
         {product.image_path && <h2 className="pt-1 text-title font-semibold">{product.name}</h2>}
         {product.description && <p className="mt-1 text-ink-2">{product.description}</p>}
-        <p className="tabular mt-2 font-semibold">
-          {configurable.variants.length > 1 ? `From ${formatMoney(lowestPrice(configurable))}` : formatMoney(lowestPrice(configurable))}
-        </p>
-
-        <div className="mt-2 divide-y divide-line border-t border-line">
-          {configurable.variants.length > 0 && (
-            <section
-              ref={(el) => void sections.current.set('__variant', el)}
-              tabIndex={-1}
-              aria-labelledby="variant-heading"
-              className="scroll-mt-4 py-4 outline-none"
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 id="variant-heading" className="font-semibold">
-                  Size
-                </h3>
-                <span className={cx('text-small', variantError ? 'font-semibold text-danger' : 'text-ink-2')}>{variantError ?? 'Required · pick 1'}</span>
-              </div>
-              <div role="radiogroup" aria-labelledby="variant-heading" className="mt-1 divide-y divide-line">
-                {configurable.variants.map((v) => (
-                  <ChoiceRow
-                    key={v.id}
-                    type="radio"
-                    name="variant"
-                    checked={config.variantId === v.id}
-                    disabled={!v.is_available}
-                    onChange={() => setConfig({ ...config, variantId: v.id })}
-                    label={v.name}
-                    meta={v.is_available ? formatMoney(v.price_minor) : 'Sold out'}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {configurable.groups.map((group) => (
-            <GroupSection
-              key={group.id}
-              group={group}
-              config={config}
-              setConfig={setConfig}
-              error={showErrors ? result.groupErrors[group.id] : undefined}
-              sectionRef={(el) => void sections.current.set(group.id, el)}
-            />
-          ))}
-
-          <div className="py-4">
-            <Field label="Special instructions" optional hint="The store sees this note. It can’t add paid extras.">
-              {(p) => (
-                <Textarea
-                  {...p}
-                  rows={2}
-                  maxLength={200}
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  placeholder="Less spicy, no onions…"
-                />
-              )}
-            </Field>
-          </div>
-        </div>
-        {showErrors && result.error && !result.error.groupId && result.error.code !== 'variant_required' && (
-          <Notice tone="danger">{result.error.message}</Notice>
-        )}
+        <p className="tabular mt-2 font-semibold">{customizer.priceLabel}</p>
+        <div className="mt-2 border-t border-line">{customizer.options}</div>
       </div>
     </Sheet>
   );

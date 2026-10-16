@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { Clock, Info, MapPin, Search, Star } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useLocationContext } from '@/features/location/LocationProvider';
@@ -13,16 +13,15 @@ import { formatMoney } from '@/domain/money';
 import { summarizeHours, trimSeconds } from '@/domain/hours';
 import type { ProductRow, Storefront } from '@/types/models';
 import { useCarts, useQuote, useStoreHours, useStoreMenu, useStorefront, useStoreReviews } from './api';
-import { ProductSheet } from './ProductSheet';
 import { StoreMeta, storeStateText } from './storeDisplay';
 
-function ProductEntry({ product, onOpen }: { product: ProductRow; onOpen: () => void }) {
+function ProductEntry({ product, storeSlug }: { product: ProductRow; storeSlug: string }) {
   const variants = product.product_variants;
   const price = lowestPrice({ base_price_minor: product.base_price_minor, variants });
   const soldOut = !product.is_available;
   return (
     <li>
-      <button type="button" onClick={onOpen} className="group flex w-full gap-4 py-4 text-left">
+      <Link to={`/stores/${storeSlug}/items/${product.id}`} className="group flex w-full gap-4 py-4 text-left">
         <div className={cx('min-w-0 flex-1', soldOut && 'opacity-55')}>
           <h3 className="font-semibold group-hover:underline group-hover:underline-offset-4">{product.name}</h3>
           {product.description && <p className="mt-0.5 line-clamp-2 text-small text-ink-3">{product.description}</p>}
@@ -33,7 +32,7 @@ function ProductEntry({ product, onOpen }: { product: ProductRow; onOpen: () => 
         {product.image_path && (
           <MediaImage path={product.image_path} alt="" className={cx('size-22 shrink-0 rounded-media sm:size-24', soldOut && 'opacity-55')} />
         )}
-      </button>
+      </Link>
     </li>
   );
 }
@@ -177,24 +176,15 @@ function MobileCartBar({ store }: { store: Storefront }) {
 
 export default function StorePage() {
   const { slug } = useParams();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const store = useStorefront(slug);
   const menu = useStoreMenu(store.data?.id);
   const [infoOpen, setInfoOpen] = useState(false);
   const [filter, setFilter] = useState('');
   const sectionRefs = useRef(new Map<string, HTMLElement | null>());
 
-  const itemId = params.get('item');
-  const openItem = (id: string | null) =>
-    setParams(
-      (p) => {
-        const next = new URLSearchParams(p);
-        if (id) next.set('item', id);
-        else next.delete('item');
-        return next;
-      },
-      { replace: Boolean(!id) },
-    );
+  // Older links opened items with ?item=; items now have their own page.
+  const legacyItem = params.get('item');
 
   const sections = useMemo(() => {
     if (!menu.data) return [];
@@ -210,7 +200,7 @@ export default function StorePage() {
     return byCategory;
   }, [menu.data, filter]);
 
-  const selected = menu.data?.products.find((p) => p.id === itemId) ?? null;
+  if (legacyItem) return <Navigate to={`/stores/${slug}/items/${legacyItem}`} replace />;
 
   if (store.isPending) {
     return (
@@ -322,7 +312,7 @@ export default function StorePage() {
                   </h2>
                   <ul className="divide-y divide-line">
                     {sec.products.map((p) => (
-                      <ProductEntry key={p.id} product={p} onOpen={() => openItem(p.id)} />
+                      <ProductEntry key={p.id} product={p} storeSlug={s.slug} />
                     ))}
                   </ul>
                 </section>
@@ -344,7 +334,6 @@ export default function StorePage() {
 
       <MobileCartBar store={s} />
       <StoreInfoSheet store={s} open={infoOpen} onClose={() => setInfoOpen(false)} />
-      <ProductSheet product={selected} open={Boolean(selected)} onClose={() => openItem(null)} storeOpen={s.state === 'open'} />
     </div>
   );
 }

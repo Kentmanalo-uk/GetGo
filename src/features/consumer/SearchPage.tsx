@@ -79,7 +79,7 @@ export default function SearchPage() {
                 <ul className="divide-y divide-line">
                   {results.data!.products.map((p) => (
                     <li key={p.id}>
-                      <Link to={`/stores/${p.merchant_slug}?item=${p.id}`} className="group flex items-center gap-4 py-3">
+                      <Link to={`/stores/${p.merchant_slug}/items/${p.id}`} className="group flex items-center gap-4 py-3">
                         {p.image_path && <MediaImage path={p.image_path} alt="" className="size-16 shrink-0 rounded-media" />}
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold group-hover:underline group-hover:underline-offset-4">{p.name}</p>

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
 import { MapPin, Pencil, Plus } from '@/components/icons';
 import { useLocationContext } from '@/features/location/LocationProvider';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -10,11 +9,10 @@ import { DataRow, Money, PageHeader } from '@/components/ui/Display';
 import { Sheet } from '@/components/ui/Sheet';
 import { cx } from '@/components/ui/cx';
 import { formatMoney } from '@/domain/money';
-import { supabase } from '@/lib/supabase';
-import { errorHint, unwrap, userMessage } from '@/lib/errors';
+import { errorHint, userMessage } from '@/lib/errors';
 import { newIdempotencyKey } from '@/lib/queryClient';
-import type { ProductRow, QuoteItem } from '@/types/models';
-import { PRODUCT_SELECT, usePlaceOrder, useQuote, useSetCartQuantity } from './api';
+import type { QuoteItem } from '@/types/models';
+import { usePlaceOrder, useProduct, useQuote, useSetCartQuantity } from './api';
 import { AddressForm } from './AddressForm';
 import { ProductSheet, type EditingLine } from './ProductSheet';
 
@@ -36,14 +34,6 @@ function clearKey(merchantId: string) {
   } catch {
     /* ignore */
   }
-}
-
-function useProduct(productId: string | null) {
-  return useQuery({
-    queryKey: ['product', productId],
-    enabled: Boolean(productId),
-    queryFn: async () => unwrap(await supabase.from('products').select(PRODUCT_SELECT).eq('id', productId!).maybeSingle()) as unknown as ProductRow | null,
-  });
 }
 
 function ItemRow({ item, onEdit }: { item: QuoteItem; onEdit: () => void }) {

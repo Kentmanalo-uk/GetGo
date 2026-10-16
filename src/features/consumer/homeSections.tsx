@@ -15,7 +15,7 @@ import { useExploreItems, type FeedItem } from './api';
 export function ItemCard({ item }: { item: FeedItem }) {
   const unavailable = !item.is_available;
   return (
-    <Link to={`/stores/${item.merchant_slug}?item=${item.id}`} className="group block min-w-0">
+    <Link to={`/stores/${item.merchant_slug}/items/${item.id}`} className="group block min-w-0">
       <div className={cx('relative overflow-hidden rounded-media', unavailable && 'opacity-60')}>
         {item.image_path ? (
           <MediaImage path={item.image_path} alt="" className="aspect-square w-full transition-transform duration-300 group-hover:scale-[1.03]" />

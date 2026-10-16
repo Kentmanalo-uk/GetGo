@@ -99,6 +99,15 @@ export function useStoreMenu(merchantId: string | undefined) {
   });
 }
 
+/** One published item with its sizes and choices (public data). */
+export function useProduct(productId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['product', productId],
+    enabled: Boolean(productId),
+    queryFn: async () => unwrap(await supabase.from('products').select(PRODUCT_SELECT).eq('id', productId!).maybeSingle()) as unknown as ProductRow | null,
+  });
+}
+
 export function useStoreHours(merchantId: string | undefined) {
   return useQuery({
     queryKey: ['store-hours', merchantId],
