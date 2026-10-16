@@ -237,13 +237,14 @@ export function AddressesPage() {
   );
 }
 
-export function NotificationsPage() {
+/** `embedded`: inside a layout that already pads the page (the rider app). */
+export function NotificationsPage({ embedded }: { embedded?: boolean } = {}) {
   const list = useNotifications();
   const mark = useMarkNotificationsRead();
   const navigate = useNavigate();
   const unread = list.data?.filter((n) => !n.read_at) ?? [];
   return (
-    <div className="page-x mx-auto max-w-3xl pb-10">
+    <div className={cx('mx-auto max-w-3xl pb-10', !embedded && 'page-x')}>
       <PageHeader
         title="Notifications"
         actions={

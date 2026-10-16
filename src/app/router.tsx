@@ -112,7 +112,21 @@ export const router = createBrowserRouter([
           {
             // Pending and new applicants see their application status here.
             element: <RequireAuth signInPath="/rider/sign-in" />,
-            children: [{ index: true, lazy: lazy(() => import('@/features/rider/RiderPage')) }],
+            children: [
+              {
+                lazy: async () => ({ Component: (await import('@/features/rider/RiderLayout')).RiderLayout }),
+                children: [
+                  { index: true, lazy: lazyNamed(() => import('@/features/rider/RiderHomePage'), 'RiderHomePage') },
+                  { path: 'orders', lazy: lazyNamed(() => import('@/features/rider/RiderOrdersPages'), 'RiderOrdersPage') },
+                  { path: 'orders/:orderId', lazy: lazyNamed(() => import('@/features/rider/RiderOrdersPages'), 'RiderOrderPreviewPage') },
+                  { path: 'jobs', lazy: lazyNamed(() => import('@/features/rider/RiderJobsPages'), 'RiderJobsPage') },
+                  { path: 'jobs/:orderId', lazy: lazyNamed(() => import('@/features/rider/RiderJobsPages'), 'RiderJobPage') },
+                  { path: 'earnings', lazy: lazyNamed(() => import('@/features/rider/RiderEarningsPage'), 'RiderEarningsPage') },
+                  { path: 'account', lazy: lazyNamed(() => import('@/features/rider/RiderAccountPage'), 'RiderAccountPage') },
+                  { path: 'notifications', lazy: lazyNamed(() => import('@/features/rider/RiderAccountPage'), 'RiderNotificationsPage') },
+                ],
+              },
+            ],
           },
         ],
       },
