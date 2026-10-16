@@ -243,9 +243,15 @@ export default function StorePage() {
       )}
 
       <div className="page-x mx-auto max-w-7xl">
-        <header className="flex items-start gap-4 pt-5 pb-4 lg:pt-8">
-          <StoreMark name={s.name} logoPath={s.logo_path} size="lg" className="hidden sm:inline-flex" />
-          <div className="min-w-0 flex-1">
+        <header className={cx('flex items-start gap-4 pb-4', s.cover_path ? 'pt-0' : 'pt-5 lg:pt-8')}>
+          {/* The logo overlaps the cover photo when there is one. */}
+          <StoreMark
+            name={s.name}
+            logoPath={s.logo_path}
+            size="lg"
+            className={cx('ring-4 ring-surface', s.cover_path && 'relative -mt-8 lg:-mt-10')}
+          />
+          <div className={cx('min-w-0 flex-1', s.cover_path && 'pt-3')}>
             <h1 className="text-title font-bold lg:text-display">{s.name}</h1>
             <StoreMeta store={s} className="mt-1" />
             <button type="button" onClick={() => setInfoOpen(true)} className="mt-2 inline-flex items-center gap-1.5 text-small font-semibold underline underline-offset-4">
