@@ -20,6 +20,7 @@ describe('home feed', () => {
     expect(f.popular).toEqual([]);
     expect(f.meals.map((i: any) => i.name)).toEqual(['Bicol Express Rice Meal']);
     expect(f.meals[0]).toMatchObject({ price_minor: 12000, has_sizes: true, merchant_slug: 'kainan-sa-bayan', merchant_state: 'open' });
+    expect(f.meals[0]).toHaveProperty('merchant_logo_path');
     expect(f.essentials).toEqual([]);
     expect(f.new_stores.map((s: any) => s.name)).toEqual(['Kainan sa Bayan']);
     // Only public storefront fields, and no order or customer data.

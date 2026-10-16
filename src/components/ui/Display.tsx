@@ -77,9 +77,10 @@ export function StatusText({ tone, children, className }: { tone: StatusTone; ch
 }
 
 /** Store logo, or a typographic monogram when none is uploaded. */
-export function StoreMark({ name, logoPath, size = 'md', className }: { name: string; logoPath?: string | null; size?: 'sm' | 'md' | 'lg'; className?: string }) {
-  const sizes = { sm: 'size-10 text-small', md: 'size-14 text-heading', lg: 'size-20 text-title' };
+export function StoreMark({ name, logoPath, size = 'md', className }: { name: string; logoPath?: string | null; size?: 'xs' | 'sm' | 'md' | 'lg'; className?: string }) {
+  const sizes = { xs: 'size-5 text-[9px]', sm: 'size-10 text-small', md: 'size-14 text-heading', lg: 'size-20 text-title' };
   const url = mediaUrl(logoPath);
+  const radius = size === 'xs' ? 'rounded-full' : 'rounded-media';
   const initials = name
     .split(/\s+/)
     .filter((w) => /^[A-Za-z0-9]/.test(w))
@@ -87,9 +88,9 @@ export function StoreMark({ name, logoPath, size = 'md', className }: { name: st
     .map((w) => w[0]!.toUpperCase())
     .join('');
   return url ? (
-    <img src={url} alt="" loading="lazy" className={cx('shrink-0 rounded-media bg-canvas object-cover', sizes[size], className)} />
+    <img src={url} alt="" loading="lazy" className={cx('shrink-0 bg-canvas object-cover', radius, sizes[size], className)} />
   ) : (
-    <span aria-hidden className={cx('inline-flex shrink-0 items-center justify-center rounded-media bg-ink font-bold text-accent', sizes[size], className)}>
+    <span aria-hidden className={cx('inline-flex shrink-0 items-center justify-center bg-ink font-bold text-accent', radius, sizes[size], className)}>
       {initials || 'G'}
     </span>
   );

@@ -14,7 +14,7 @@ import { customerStatusLabel } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
 import { CATEGORY_LABELS, FOOD_CATEGORIES, SHOP_CATEGORIES, type MerchantCategory, type Promotion, type Storefront } from '@/types/models';
 import { useHomeFeed, useMyOrders, usePublicPromotions, useStorefronts } from './api';
-import { FeaturedItems, ITEM_GRID, StoreRow } from './homeSections';
+import { AllItems, FeaturedItems, ITEM_GRID, StoreRow } from './homeSections';
 import { StoreEntry } from './storeDisplay';
 
 type Filter = 'all' | 'food' | 'shops' | MerchantCategory;
@@ -307,6 +307,7 @@ export default function HomePage() {
               </>
             )
           )}
+          {loc.area && <AllItems areaId={loc.area.id} filter={matches} />}
         </>
       )}
 

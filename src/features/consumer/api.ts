@@ -136,6 +136,7 @@ export interface FeedItem {
   merchant_slug: string;
   merchant_state: Storefront['state'];
   merchant_category: Storefront['category'];
+  merchant_logo_path: string | null;
   orders: number;
 }
 
