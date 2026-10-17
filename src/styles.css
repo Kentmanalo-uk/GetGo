@@ -132,8 +132,11 @@ dialog.sheet[open] {
     padding: 1.5rem;
   }
 }
+/* A light blur behind sheets, without dimming the page. */
 dialog.sheet::backdrop {
-  background: rgb(22 20 26 / 0.45);
+  background: transparent;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
 }
 @media (prefers-reduced-motion: no-preference) {
   /* Phones: the sheet slides up and back down; opening mirrors closing (same length, reversed curve). */
