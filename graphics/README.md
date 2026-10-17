@@ -61,6 +61,8 @@ The posts use an ad style: a full pink background with diagonal ink or white blo
 | `06-ride-with-getgo-1080x1350.png` | Rider recruitment |
 | `07-partner-with-getgo-1080x1350.png` | Store partner recruitment |
 | `08-padala-errands-1080x1080.png` | Padala and errands |
+| `09-food-menu-1080x1350.png` | What you can order: food categories (rice meals to halo-halo) |
+| `10-pabili-list-1080x1350.png` | Pabili anything: an everyday shopping list (groceries to OTC medicine) |
 
 Each post has a caption in a text file with the same name (for example `01-launch-square-1080.txt`). The Facebook Page bio, About text and settings are in `bio.txt`.
 

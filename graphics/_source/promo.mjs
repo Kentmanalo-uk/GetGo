@@ -390,5 +390,92 @@ export function promoDesigns({ C, icon, logo, goSvg }) {
         ${fcard({ x: 70, y: 680, i: 'ListChecks', t: 'Errands', s: 'Buy medicine, pay bills' })}
         <div class="abs" style="left:70px;bottom:150px;z-index:3">${cta('A rider handles it', 'pink', 30)}</div>
         <div class="abs" style="left:70px;bottom:76px;z-index:3;display:flex;gap:30px">${infoRow(C.ink2, 20)}</div>` },
+
+    // 09 · Food menu: what people can order, as a grid of categories.
+    { out: 'promotion/09-food-menu-1080x1350.png', w: 1080, h: 1350,
+      body: `<div class="abs pinkbg" style="inset:0"></div>
+        <div class="abs" style="left:0;right:0;bottom:0;height:300px;background:${C.ink};clip-path:polygon(0 38%,100% 0,100% 100%,0 100%)"></div>
+        <div class="abs outline" style="right:-30px;top:250px;font-size:230px">MENU</div>
+        <div class="dots" style="color:#fff;left:640px;top:70px;width:150px;height:110px"></div>
+        <div class="abs" style="left:64px;top:60px">${badge(34)}</div>
+        ${sticker({ x: 830, y: 50, d: 190, bg: '#fff', color: C.fill, fs: 26, html: 'From local<br/>kainan' })}
+        <div class="abs" style="left:64px;top:180px;color:#fff;z-index:3">
+          <div class="hl" style="font-size:40px;letter-spacing:.06em;color:${C.ink}">What’s on GETGO?</div>
+          <div class="hl" style="font-size:136px;margin-top:12px">Craving</div>
+          <div class="hl" style="font-size:84px;margin-top:10px"><span class="box tilt">something?</span></div>
+        </div>
+        <div class="abs" style="left:56px;right:56px;top:540px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;z-index:3">
+          ${[
+            ['BowlFood', 'Rice meals', 'Ulam + rice'],
+            ['EggCrack', 'Silog', 'All-day breakfast'],
+            ['Hamburger', 'Burgers', 'With fries'],
+            ['Pizza', 'Pizza', 'Whole or by slice'],
+            ['CookingPot', 'Ulam', 'Adobo, sinigang…'],
+            ['BowlSteam', 'Pancit', 'Noodles & soup'],
+            ['Shrimp', 'Seafood', 'Fresh catch'],
+            ['Popcorn', 'Snacks', 'Merienda time'],
+            ['Coffee', 'Milk tea', 'Coffee & drinks'],
+            ['Bread', 'Bakery', 'Pandesal & more'],
+            ['Cake', 'Cakes', 'For celebrations'],
+            ['IceCream', 'Halo-halo', 'Ice cream & sweets'],
+          ]
+            .map(([i, t, d]) => `<div style="background:#fff;border-radius:26px;padding:20px 12px 18px;text-align:center;box-shadow:0 14px 34px rgba(0,0,0,.14)">
+              <div style="width:92px;height:92px;margin:0 auto;border-radius:50%;background:${C.soft};display:grid;place-items:center">${ic(i, 54)}</div>
+              <div style="font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:12px;color:${C.ink}">${t}</div>
+              <div style="font-size:18px;font-weight:600;color:${C.ink3};margin-top:2px">${d}</div></div>`)
+            .join('')}
+        </div>
+        <div class="abs" style="left:64px;bottom:64px;z-index:3">${cta('Order now', 'pink', 30)}</div>
+        <div class="abs" style="right:64px;bottom:80px;z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:10px">${infoRow('#fff', 21)}</div>` },
+
+    // 10 · Pabili list: everyday items, as a receipt-style shopping list.
+    { out: 'promotion/10-pabili-list-1080x1350.png', w: 1080, h: 1350,
+      css: `body{background:${C.ink};color:#fff}`,
+      body: `<div class="abs pinkbg" style="right:0;top:0;bottom:0;width:560px;clip-path:polygon(30% 0,100% 0,100% 100%,0 100%)"></div>
+        <div class="abs outline" style="left:-20px;top:1040px;font-size:240px;-webkit-text-stroke-color:rgba(255,255,255,.1)">PABILI</div>
+        <div class="abs" style="left:64px;top:60px"><span style="display:inline-flex;background:#fff;border-radius:999px;padding:11px 18px">${wordmark(34)}</span></div>
+        <div class="abs" style="left:64px;top:200px;z-index:3;width:470px">
+          <div class="hl" style="font-size:40px;letter-spacing:.06em;color:${C.pink}">Just tell us</div>
+          <div class="hl" style="font-size:132px;margin-top:12px">Pabili</div>
+          <div class="hl" style="font-size:78px;margin-top:10px"><span class="box white tilt">anything</span></div>
+          <div style="font-size:28px;font-weight:600;color:rgba(255,255,255,.85);margin-top:32px;line-height:1.3">A local rider buys it at the store and brings it to your door.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:34px">
+            ${['Sari-sari', 'Grocery', 'Market', 'Pharmacy', 'Bakery', 'Hardware'].map((t) => `<span style="border:2px solid rgba(255,255,255,.35);border-radius:999px;padding:9px 18px;font-size:22px;font-weight:700">${t}</span>`).join('')}
+          </div>
+        </div>
+        <div class="abs" style="left:575px;top:150px;width:440px;transform:rotate(3deg);z-index:3;filter:drop-shadow(0 30px 50px rgba(0,0,0,.35))">
+          <div style="background:#fff;color:${C.ink};padding:34px 34px 54px;clip-path:polygon(${(() => {
+            const pts = ['0 0', '100% 0'];
+            const n = 22;
+            for (let k = 0; k <= n; k++) pts.push(`${(100 - (k * 100) / n).toFixed(2)}% ${k % 2 ? 'calc(100% - 16px)' : '100%'}`);
+            return pts.join(',');
+          })()})">
+            <div style="display:flex;align-items:center;gap:12px">${ic('Notepad', 40)}<span style="font-size:30px;font-weight:800;letter-spacing:-.02em">My pabili list</span></div>
+            <div style="font-size:18px;font-weight:600;color:${C.ink3};margin-top:4px">For: Bahay · Bongabong</div>
+            <div style="border-top:2px dashed ${C.line};margin-top:18px"></div>
+            ${[
+              ['Grains', 'Rice & eggs', true],
+              ['Drop', 'Cooking oil & sauces', true],
+              ['FishSimple', 'Fish & meat', true],
+              ['Carrot', 'Fruits & veggies', true],
+              ['CoffeeBean', 'Coffee & snacks', true],
+              ['ToiletPaper', 'Toiletries', false],
+              ['Baby', 'Baby needs', false],
+              ['Pill', 'OTC medicine', false],
+              ['Notepad', 'School supplies', false],
+              ['PawPrint', 'Pet food', false],
+            ]
+              .map(([i, t, done]) => `<div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid ${C.line}">
+                <span style="width:46px;height:46px;border-radius:12px;background:${C.soft};display:grid;place-items:center;flex:none">${ic(i, 28)}</span>
+                <span style="flex:1;font-size:23px;font-weight:700">${t}</span>
+                <span style="width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;${done ? `background:${C.fill}` : `border:2.5px solid ${C.line}`}">${done ? ic('Check', 18, 'white') : ''}</span></div>`)
+              .join('')}
+            <div style="margin-top:16px;font-size:20px;font-weight:700;color:${C.fill};text-align:center">You see the total before you order</div>
+          </div>
+        </div>
+        ${sticker({ x: 880, y: 70, d: 180, bg: C.ink, fs: 26, rot: 12, html: 'We buy it<br/>for you!' })}
+        ${fcard({ x: 64, y: 790, i: 'Wallet', t: 'Change comes back', s: 'Unused money returns to you', rot: -3, size: 0.92 })}
+        <div class="abs" style="left:64px;bottom:150px;z-index:4">${cta('Pabili now', 'pink', 32)}</div>
+        <div class="abs" style="left:64px;bottom:80px;z-index:4;display:flex;gap:34px">${infoRow('#fff', 22)}</div>` },
   ];
 }
