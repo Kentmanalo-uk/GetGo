@@ -30,23 +30,70 @@ export function Sheet({
   media?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  // Content stays mounted while the closing animation plays.
+  const [mounted, setMounted] = useState(open);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) {
-      dialog.showModal();
-      document.documentElement.style.overflow = 'hidden';
-    } else if (!open && dialog.open) {
-      dialog.close();
+    if (open) {
+      setMounted(true);
+      setClosing(false);
+      if (!dialog.open) {
+        dialog.showModal();
+        document.documentElement.style.overflow = 'hidden';
+      }
+      return;
     }
-    return () => {
-      if (!open) document.documentElement.style.overflow = '';
-    };
+    if (!dialog.open) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      dialog.close();
+      setMounted(false);
+      return;
+    }
+    setClosing(true);
+    const t = setTimeout(() => {
+      dialog.close();
+      setClosing(false);
+      setMounted(false);
+      if (panelRef.current) {
+        panelRef.current.style.transform = '';
+        panelRef.current.style.transition = '';
+      }
+    }, 240);
+    return () => clearTimeout(t);
   }, [open]);
 
   useEffect(() => () => void (document.documentElement.style.overflow = ''), []);
+
+  // Phones: drag the top of the sheet down to close it.
+  const drag = useRef<{ startY: number; dy: number } | null>(null);
+  const onDragStart = (e: React.PointerEvent) => {
+    if (window.matchMedia('(min-width: 640px)').matches || (e.target as HTMLElement).closest('button')) return;
+    drag.current = { startY: e.clientY, dy: 0 };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    if (panelRef.current) panelRef.current.style.transition = 'none';
+  };
+  const onDragMove = (e: React.PointerEvent) => {
+    if (!drag.current || !panelRef.current) return;
+    drag.current.dy = Math.max(0, e.clientY - drag.current.startY);
+    panelRef.current.style.transform = `translateY(${drag.current.dy}px)`;
+  };
+  const onDragEnd = () => {
+    const d = drag.current;
+    drag.current = null;
+    const panel = panelRef.current;
+    if (!d || !panel) return;
+    if (d.dy > 90) {
+      onClose();
+    } else {
+      panel.style.transition = 'transform 200ms cubic-bezier(0.32, 0.72, 0, 1)';
+      panel.style.transform = '';
+    }
+  };
 
   const widths = { sm: 'sm:max-w-md', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' };
 
@@ -54,6 +101,7 @@ export function Sheet({
     <dialog
       ref={ref}
       className="sheet"
+      data-closing={closing || undefined}
       aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();
@@ -66,16 +114,34 @@ export function Sheet({
         if (e.target === ref.current) onClose();
       }}
     >
-      {open && (
+      {(open || mounted) && (
         <div
+          ref={panelRef}
           className={cx(
             'sheet-panel flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-sheet bg-surface shadow-sheet',
             'sm:max-h-[85dvh] sm:rounded-sheet sm:shadow-pop',
             widths[size],
           )}
         >
+          {/* Drag handle (phones). */}
+          <div
+            onPointerDown={onDragStart}
+            onPointerMove={onDragMove}
+            onPointerUp={onDragEnd}
+            onPointerCancel={onDragEnd}
+            className="flex shrink-0 cursor-grab touch-none justify-center pt-2.5 pb-1 sm:hidden"
+            aria-hidden
+          >
+            <span className="h-1.5 w-10 rounded-full bg-line-strong" />
+          </div>
           {media}
-          <div className={cx('flex items-start gap-3 px-5 pt-4', hideTitle ? 'sr-only' : 'pb-2')}>
+          <div
+            onPointerDown={onDragStart}
+            onPointerMove={onDragMove}
+            onPointerUp={onDragEnd}
+            onPointerCancel={onDragEnd}
+            className={cx('flex touch-none items-start gap-3 px-5 pt-2 sm:touch-auto sm:pt-4', hideTitle ? 'sr-only' : 'pb-2')}
+          >
             <h2 id={titleId} className="min-w-0 flex-1 pt-1.5 text-title font-semibold">
               {title}
             </h2>
