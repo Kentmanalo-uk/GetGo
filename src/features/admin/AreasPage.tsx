@@ -39,6 +39,11 @@ const schema = z
       .string()
       .trim()
       .refine((v) => v === '' || (/^\d+$/.test(v) && Number(v) >= 5 && Number(v) <= 120), 'Enter 5 to 120 minutes, or leave blank.'),
+    padala_enabled: z.boolean(),
+    errands_enabled: z.boolean(),
+    padala_fee: peso,
+    errand_fee: peso,
+    errand_max_budget: peso,
   })
   .superRefine((v, ctx) => {
     const threshold = v.small_order_threshold ? parsePesos(v.small_order_threshold) : null;
@@ -72,6 +77,11 @@ function AreaForm({ area, onDone }: { area: ServiceArea | null; onDone: () => vo
       small_order_threshold: toPesoInput(area?.small_order_threshold_minor ?? null),
       small_order_fee: toPesoInput(area?.small_order_fee_minor ?? 0),
       typical_delivery_minutes: area?.typical_delivery_minutes?.toString() ?? '',
+      padala_enabled: area?.padala_enabled ?? true,
+      errands_enabled: area?.errands_enabled ?? true,
+      padala_fee: toPesoInput(area?.padala_fee_minor ?? 0),
+      errand_fee: toPesoInput(area?.errand_fee_minor ?? 2000),
+      errand_max_budget: toPesoInput(area?.errand_max_budget_minor ?? 300000),
     },
   });
   const errors = form.formState.errors;
@@ -91,6 +101,11 @@ function AreaForm({ area, onDone }: { area: ServiceArea | null; onDone: () => vo
         typical_delivery_minutes: v.typical_delivery_minutes ? Number(v.typical_delivery_minutes) : null,
         psgc_code: psgcCode,
         province_code: psgcCode ? provinceCode : null,
+        padala_enabled: v.padala_enabled,
+        errands_enabled: v.errands_enabled,
+        padala_fee_minor: parsePesos(v.padala_fee)!,
+        errand_fee_minor: parsePesos(v.errand_fee)!,
+        errand_max_budget_minor: parsePesos(v.errand_max_budget)!,
       });
       toast(area ? 'Area saved' : 'Area added');
       onDone();
@@ -176,6 +191,37 @@ function AreaForm({ area, onDone }: { area: ServiceArea | null; onDone: () => vo
           {(p) => <Input {...p} inputMode="numeric" {...form.register('typical_delivery_minutes')} />}
         </Field>
       </div>
+      <fieldset className="space-y-4 border-t border-line pt-4">
+        <legend className="sr-only">Padala and errands</legend>
+        <p className="text-small text-ink-3">
+          Padala and errands charge the higher barangay price of the two stops, plus the service fee and the fee below.
+        </p>
+        <Controller
+          control={form.control}
+          name="padala_enabled"
+          render={({ field }) => (
+            <Switch checked={field.value} onChange={field.onChange} label="Padala" description="Customers can send parcels and documents within this area." />
+          )}
+        />
+        <Controller
+          control={form.control}
+          name="errands_enabled"
+          render={({ field }) => (
+            <Switch checked={field.value} onChange={field.onChange} label="Errands" description="Riders buy items, pay bills or pick things up for customers." />
+          )}
+        />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Padala fee" error={errors.padala_fee?.message} hint="Added per padala. Use 0 for none.">
+            {(p) => <Input {...p} prefix="₱" inputMode="decimal" {...form.register('padala_fee')} />}
+          </Field>
+          <Field label="Errand fee" error={errors.errand_fee?.message} hint="Added per errand.">
+            {(p) => <Input {...p} prefix="₱" inputMode="decimal" {...form.register('errand_fee')} />}
+          </Field>
+          <Field label="Max errand budget" error={errors.errand_max_budget?.message} hint="Most a rider spends for one errand.">
+            {(p) => <Input {...p} prefix="₱" inputMode="decimal" {...form.register('errand_max_budget')} />}
+          </Field>
+        </div>
+      </fieldset>
       <Controller
         control={form.control}
         name="is_active"
@@ -277,6 +323,7 @@ export default function AreasPage() {
             { header: 'Service fee', align: 'right', cell: (a) => formatMoney(a.service_fee_minor) },
             { header: 'Small-order fee', align: 'right', cell: smallOrder },
             { header: 'Typical time', align: 'right', cell: (a) => (a.typical_delivery_minutes ? `${a.typical_delivery_minutes} min` : '—') },
+            { header: 'Padala · Errands', cell: (a) => `${a.padala_enabled ? 'On' : 'Off'} · ${a.errands_enabled ? 'On' : 'Off'}` },
             {
               header: <span className="sr-only">Actions</span>,
               align: 'right',
@@ -307,6 +354,7 @@ export default function AreasPage() {
               <p className="tabular text-small text-ink-2">
                 Delivery {formatMoney(a.delivery_fee_minor)} · Service {formatMoney(a.service_fee_minor)} · Small order {smallOrder(a)}
                 {a.typical_delivery_minutes ? ` · ~${a.typical_delivery_minutes} min` : ''}
+                {` · Padala ${a.padala_enabled ? 'on' : 'off'} · Errands ${a.errands_enabled ? 'on' : 'off'}`}
               </p>
               {perms.canConfigure && (
                 <div className="flex gap-2">

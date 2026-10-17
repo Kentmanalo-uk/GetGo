@@ -23,11 +23,11 @@ type Filter = 'all' | 'food' | 'shops' | MerchantCategory;
 const UNAVAILABLE_SERVICES = {
   padala: {
     title: 'Padala',
-    body: 'Padala is for sending parcels and documents across town. It isn’t available yet — parcel rules, pricing and rider handling are still being set up for your area.',
+    body: 'Padala sends parcels and documents across town. It isn’t available in this area yet — we’ll announce it when it launches here.',
   },
   errands: {
     title: 'Errands',
-    body: 'Errands such as bill payments and queueing aren’t available yet. We’ll announce supported errands when they launch in your area.',
+    body: 'Errands — buying things not on GETGO, paying bills, picking things up — aren’t available in this area yet. We’ll announce them when they launch here.',
   },
 } as const;
 
@@ -48,7 +48,7 @@ function ActiveOrders() {
             <span className="relative size-2.5 rounded-full bg-accent" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold">{customerStatusLabel(order.status)}</span>
+            <span className="block font-semibold">{customerStatusLabel(order.status, order.service)}</span>
             <span className="block truncate text-small text-white/70">
               {order.merchant_name} · {order.code}
             </span>
@@ -64,12 +64,23 @@ function ActiveOrders() {
 
 function ServiceShortcuts({ filter, onFilter }: { filter: Filter; onFilter: (f: Filter) => void }) {
   const [info, setInfo] = useState<keyof typeof UNAVAILABLE_SERVICES | null>(null);
+  const navigate = useNavigate();
+  const { area } = useLocationContext();
+  // Padala and errands open their request pages; admins can switch them off per area.
   const items = [
     { key: 'food', label: 'Food', icon: UtensilsCrossed, available: true },
     { key: 'shops', label: 'Shops', icon: ShoppingBasket, available: true },
-    { key: 'padala', label: 'Padala', icon: Package, available: false },
-    { key: 'errands', label: 'Errands', icon: ListChecks, available: false },
+    { key: 'padala', label: 'Padala', icon: Package, available: area?.padala_enabled ?? true },
+    { key: 'errands', label: 'Errands', icon: ListChecks, available: area?.errands_enabled ?? true },
   ] as const;
+  const open = (key: (typeof items)[number]['key'], available: boolean) => {
+    if (key === 'padala' || key === 'errands') {
+      if (available) navigate(`/${key}`);
+      else setInfo(key);
+      return;
+    }
+    onFilter(filter === key ? 'all' : key);
+  };
   return (
     <>
       <nav aria-label="Services" className="grid grid-cols-4 gap-1 sm:flex sm:gap-8">
@@ -79,8 +90,8 @@ function ServiceShortcuts({ filter, onFilter }: { filter: Filter; onFilter: (f: 
             <button
               key={key}
               type="button"
-              onClick={() => (available ? onFilter(active ? 'all' : (key as Filter)) : setInfo(key as keyof typeof UNAVAILABLE_SERVICES))}
-              aria-pressed={available ? active : undefined}
+              onClick={() => open(key, available)}
+              aria-pressed={key === 'food' || key === 'shops' ? active : undefined}
               className="group flex flex-col items-center gap-1 py-1 sm:flex-row sm:gap-2.5"
             >
               {/* Filled pink-gradient icons; the selected filter is marked on its label. */}
@@ -105,7 +116,7 @@ function ServiceShortcuts({ filter, onFilter }: { filter: Filter; onFilter: (f: 
       <Sheet
         open={info !== null}
         onClose={() => setInfo(null)}
-        title={info ? `${UNAVAILABLE_SERVICES[info].title} is coming later` : ''}
+        title={info ? `${UNAVAILABLE_SERVICES[info].title} isn’t available here yet` : ''}
         size="sm"
         footer={
           <Button block variant="secondary" onClick={() => setInfo(null)}>

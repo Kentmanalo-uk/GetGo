@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { Check, ChevronRight, MapPin, Navigation, Phone, Store } from '@/components/icons';
+import { Check, ChevronRight, ListChecks, MapPin, Navigation, Package, Phone, Store } from '@/components/icons';
 import { StatusText, timeAgo } from '@/components/ui/Display';
 import { cx } from '@/components/ui/cx';
 import { orderStatusLabel, statusTone } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
-import type { OrderStatus } from '@/domain/orderStatus';
-import type { OrderWithItems } from '@/types/models';
+import type { OrderStatus, Service } from '@/domain/orderStatus';
+import { ERRAND_TYPES, PARCEL_SIZES, type ErrandTask, type OrderWithItems, type PadalaTask } from '@/types/models';
 import { itemCount, riderEarning } from './api';
 
 function mapsUrl(parts: Array<string | null | undefined>) {
@@ -110,32 +110,41 @@ const chip = 'inline-flex h-9 items-center gap-1.5 rounded-full border border-li
 
 /**
  * Pickup and drop-off as a two-stop route. The customer's exact address and
- * phone are shown once they've paid; before that, only their barangay.
+ * phone are shown once they've paid; before that, only their barangay. The
+ * same applies to a padala sender, who is usually the customer.
  */
 export function Route({ order, showCustomer }: { order: OrderWithItems; showCustomer: boolean }) {
   const pickup = order.pickup_address;
   const addr = order.delivery_address;
+  const isStore = order.service === 'pabili';
+  // A store or errand place is public; a padala sender is private until payment.
+  const showPickup = order.service !== 'padala' || showCustomer;
+  const pickupLabel = order.service === 'padala' ? 'Pick up from' : order.service === 'errand' ? 'Go to' : 'Buy at';
+  const pickupTitle = isStore ? order.merchant_name : showPickup ? (pickup.name ?? '') : `Brgy. ${pickup.barangay}`;
   return (
     <div className="relative space-y-5">
       <span aria-hidden className="absolute top-9 bottom-9 left-[17px] w-0.5 bg-line" />
       <Stop
-        icon={<Store className="size-4" weight="fill" />}
-        label="Buy at"
-        title={order.merchant_name}
+        icon={order.service === 'padala' ? <Package className="size-4" weight="fill" /> : order.service === 'errand' ? <ListChecks className="size-4" weight="fill" /> : <Store className="size-4" weight="fill" />}
+        label={pickupLabel}
+        title={pickupTitle}
         actions={
-          <>
-            <a className={chip} href={mapsUrl([order.merchant_name, pickup.line1, pickup.barangay, pickup.city])} target="_blank" rel="noreferrer">
-              <Navigation className="size-4" aria-hidden /> Directions
-            </a>
-            {pickup.phone && (
-              <a className={chip} href={`tel:${pickup.phone}`}>
-                <Phone className="size-4" aria-hidden /> Call store
+          showPickup && (
+            <>
+              <a className={chip} href={mapsUrl([isStore ? order.merchant_name : null, pickup.line1, pickup.barangay, pickup.city])} target="_blank" rel="noreferrer">
+                <Navigation className="size-4" aria-hidden /> Directions
               </a>
-            )}
-          </>
+              {pickup.phone && (
+                <a className={chip} href={`tel:${pickup.phone}`}>
+                  <Phone className="size-4" aria-hidden /> {isStore ? 'Call store' : pickup.phone}
+                </a>
+              )}
+            </>
+          )
         }
       >
-        {pickup.line1}, {pickup.barangay}, {pickup.city}
+        {showPickup ? `${pickup.line1}, ${pickup.barangay}, ${pickup.city}` : `${pickup.city} · full address after payment`}
+        {showPickup && !isStore && pickup.landmark && <span className="block text-ink-3">Landmark: {pickup.landmark}</span>}
       </Stop>
       <Stop
         icon={<MapPin className="size-4" weight="fill" />}
@@ -163,13 +172,16 @@ export function Route({ order, showCustomer }: { order: OrderWithItems; showCust
 
 /** The money for one order from the rider's side. */
 export function MoneySplit({ order, className }: { order: OrderWithItems; className?: string }) {
+  const middle =
+    order.service === 'pabili'
+      ? [{ label: 'You pay the store', value: order.subtotal_minor }]
+      : order.subtotal_minor > 0
+        ? [{ label: 'Budget to spend', value: order.subtotal_minor }]
+        : [];
+  const cells = [{ label: 'Customer pays you', value: order.total_minor }, ...middle, { label: 'You earn', value: riderEarning(order), strong: true }];
   return (
-    <dl className={cx('grid grid-cols-3 gap-px overflow-hidden rounded-media border border-line bg-line text-center', className)}>
-      {[
-        { label: 'Customer pays you', value: order.total_minor },
-        { label: 'You pay the store', value: order.subtotal_minor },
-        { label: 'You earn', value: riderEarning(order), strong: true },
-      ].map((m) => (
+    <dl className={cx('grid gap-px overflow-hidden rounded-media border border-line bg-line text-center', cells.length === 3 ? 'grid-cols-3' : 'grid-cols-2', className)}>
+      {cells.map((m: { label: string; value: number; strong?: boolean }) => (
         <div key={m.label} className="bg-surface px-2 py-3">
           <dt className="text-micro text-ink-3">{m.label}</dt>
           <dd className={cx('tabular mt-0.5 font-bold', m.strong && 'text-accent-ink')}>{formatMoney(m.value)}</dd>
@@ -179,16 +191,41 @@ export function MoneySplit({ order, className }: { order: OrderWithItems; classN
   );
 }
 
-/** An order in a list: store, destination, size and what the rider earns. */
-export function OrderCard({ order, to, showStatus }: { order: OrderWithItems; to: string; showStatus?: boolean }) {
+/** What a list card says about the order's size: items, parcel size or errand budget. */
+function sizeLine(order: OrderWithItems) {
+  if (order.service === 'padala') return `${PARCEL_SIZES[(order.task as PadalaTask).size]?.label ?? ''} parcel`;
+  if (order.service === 'errand') {
+    const t = order.task as ErrandTask;
+    return order.subtotal_minor > 0 ? `Budget ${formatMoney(order.subtotal_minor)}` : (ERRAND_TYPES[t.type]?.label ?? 'Errand');
+  }
   const count = itemCount(order);
+  return `${count} ${count === 1 ? 'item' : 'items'} · ${formatMoney(order.subtotal_minor)}`;
+}
+
+export function ServiceTag({ service }: { service: OrderWithItems['service'] }) {
+  if (service === 'pabili') return null;
+  return (
+    <span className="mr-1.5 inline-flex rounded bg-accent-soft px-1.5 py-0.5 align-middle text-micro font-bold tracking-wide text-accent-ink uppercase">
+      {service === 'padala' ? 'Padala' : 'Errand'}
+    </span>
+  );
+}
+
+/** An order in a list: store or request, destination, size and what the rider earns. */
+export function OrderCard({ order, to, showStatus }: { order: OrderWithItems; to: string; showStatus?: boolean }) {
   return (
     <Link to={to} className="group block rounded-sheet border border-line bg-surface p-4 transition-colors hover:border-line-strong">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-semibold">{order.merchant_name}</p>
+          <p className="truncate font-semibold">
+            <ServiceTag service={order.service} />
+            {order.merchant_name}
+          </p>
           <p className="mt-0.5 flex items-center gap-1 truncate text-small text-ink-2">
-            <MapPin className="size-3.5 shrink-0" aria-hidden /> To Brgy. {order.delivery_address.barangay}
+            <MapPin className="size-3.5 shrink-0" aria-hidden />
+            {order.service === 'pabili'
+              ? `To Brgy. ${order.delivery_address.barangay}`
+              : `Brgy. ${order.pickup_address.barangay} → Brgy. ${order.delivery_address.barangay}`}
           </p>
         </div>
         <div className="shrink-0 text-right">
@@ -198,14 +235,14 @@ export function OrderCard({ order, to, showStatus }: { order: OrderWithItems; to
       </div>
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-small">
         {showStatus ? (
-          <StatusText tone={statusTone(order.status)}>{orderStatusLabel(order.status)}</StatusText>
+          <StatusText tone={statusTone(order.status)}>{orderStatusLabel(order.status, order.service)}</StatusText>
         ) : (
           <span className="text-ink-3">
             <span className="font-mono text-ink-2">{order.code}</span> · {timeAgo(order.created_at)}
           </span>
         )}
         <span className="flex items-center gap-1 text-ink-3">
-          {count} {count === 1 ? 'item' : 'items'} · {formatMoney(order.subtotal_minor)}
+          {sizeLine(order)}
           <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
         </span>
       </div>
@@ -213,7 +250,9 @@ export function OrderCard({ order, to, showStatus }: { order: OrderWithItems; to
   );
 }
 
-const JOB_STEPS = ['Accepted', 'Paid', 'Buying', 'On the way', 'Delivered'] as const;
+function jobSteps(service: Service) {
+  return ['Accepted', 'Paid', service === 'padala' ? 'Pick up' : service === 'errand' ? 'Errand' : 'Buying', 'On the way', service === 'errand' ? 'Done' : 'Delivered'];
+}
 
 function jobStepIndex(status: OrderStatus): number {
   switch (status) {
@@ -233,11 +272,11 @@ function jobStepIndex(status: OrderStatus): number {
 }
 
 /** Where a job is, from accepting it to handing it over. */
-export function JobProgress({ status, className }: { status: OrderStatus; className?: string }) {
+export function JobProgress({ status, service = 'pabili', className }: { status: OrderStatus; service?: Service; className?: string }) {
   const current = jobStepIndex(status);
   return (
     <ol className={cx('grid grid-cols-5 gap-1.5', className)} aria-label="Delivery progress">
-      {JOB_STEPS.map((label, i) => {
+      {jobSteps(service).map((label, i) => {
         const reached = i <= current;
         return (
           <li key={label} className="min-w-0" aria-current={i === current ? 'step' : undefined}>

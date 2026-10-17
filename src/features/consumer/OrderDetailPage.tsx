@@ -8,18 +8,20 @@ import { PageHeader, formatDateTime } from '@/components/ui/Display';
 import { ConfirmDialog } from '@/components/ui/Sheet';
 import { cx } from '@/components/ui/cx';
 import { useToast } from '@/components/ui/Toast';
-import { PROGRESS_STEPS, customerCanCancel, customerStatusLabel, paymentStatusLabel, progressIndex } from '@/domain/orderStatus';
+import { customerCanCancel, customerStatusLabel, paymentStatusLabel, progressIndex, progressSteps } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
 import { userMessage } from '@/lib/errors';
 import type { OrderWithItems } from '@/types/models';
 import { useOrder, useOrderRealtime, useOrderReview, useSubmitGcashPayment, useSubmitReview, useUpdateOrderStatus } from './api';
 import { OrderItemsList, OrderTotals } from './OrderViews';
+import { TaskSummary, isServiceOrder } from '@/features/services/TaskSummary';
 
 function Progress({ order }: { order: OrderWithItems }) {
   const reached = progressIndex(order.status);
+  const steps = progressSteps(order.service);
   return (
     <ol className="grid gap-0 sm:grid-cols-5 sm:gap-2" aria-label="Order progress">
-      {PROGRESS_STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const done = i <= reached;
         const current = i === reached;
         return (
@@ -28,7 +30,7 @@ function Progress({ order }: { order: OrderWithItems }) {
               <span className={cx('flex size-6 shrink-0 items-center justify-center rounded-full border-2', done ? 'border-ink bg-ink text-accent' : 'border-line-strong bg-surface')}>
                 {done && <Check className="size-3.5" weight="bold" aria-hidden />}
               </span>
-              {i < PROGRESS_STEPS.length - 1 && <span className={cx('h-6 w-0.5 sm:h-0.5 sm:w-full', i < reached ? 'bg-ink' : 'bg-line')} aria-hidden />}
+              {i < steps.length - 1 && <span className={cx('h-6 w-0.5 sm:h-0.5 sm:w-full', i < reached ? 'bg-ink' : 'bg-line')} aria-hidden />}
             </div>
             <p className={cx('pb-3 text-small sm:pb-0', current ? 'font-bold' : done ? 'font-semibold' : 'text-ink-3')}>{step.label}</p>
           </li>
@@ -78,8 +80,9 @@ function GcashPayment({ order }: { order: OrderWithItems }) {
   if (order.status === 'payment_submitted') {
     return (
       <Notice title="Payment sent — waiting for your rider to confirm">
-        Reference <span className="font-mono font-semibold">{payment.gcash_reference}</span>. Your rider will buy your items as soon as they see the
-        transfer.
+        Reference <span className="font-mono font-semibold">{payment.gcash_reference}</span>. {order.service === 'pabili'
+          ? ' Your rider will buy your items as soon as they see the transfer.'
+          : ' Your rider will start as soon as they see the transfer.'}
       </Notice>
     );
   }
@@ -90,7 +93,13 @@ function GcashPayment({ order }: { order: OrderWithItems }) {
       <h2 id="pay-heading" className="text-heading font-bold">
         Send your payment by GCash
       </h2>
-      <p className="mt-1 text-small text-ink-2">Your rider uses this money to buy your items at {order.merchant_name}.</p>
+      <p className="mt-1 text-small text-ink-2">
+        {order.service === 'padala'
+          ? 'This pays for your padala. Your rider picks it up once the payment arrives.'
+          : order.service === 'errand'
+            ? 'Your rider uses the budget for your errand and keeps the fees. Unspent money comes back to you in cash with the receipt.'
+            : `Your rider uses this money to buy your items at ${order.merchant_name}.`}
+      </p>
       {payment.rejection_note && (
         <Notice tone="warning" className="mt-3" title="Your rider didn’t receive the last payment">
           {payment.rejection_note}
@@ -146,7 +155,7 @@ function ReviewForm({ order }: { order: OrderWithItems }) {
       onSubmit={async (e) => {
         e.preventDefault();
         try {
-          await submit.mutateAsync({ orderId: order.id, merchantId: order.merchant_id, rating, comment });
+          await submit.mutateAsync({ orderId: order.id, merchantId: order.merchant_id!, rating, comment });
           toast('Thanks for your review');
         } catch {
           /* shown inline */
@@ -217,14 +226,14 @@ export default function OrderDetailPage() {
 
   return (
     <div className="page-x mx-auto max-w-5xl pb-12">
-      <PageHeader title={customerStatusLabel(order.status)} back="/orders">
+      <PageHeader title={customerStatusLabel(order.status, order.service)} back="/orders">
         {order.merchant_name} · <span className="font-mono">{order.code}</span>
       </PageHeader>
 
       <div className="space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12 lg:space-y-0">
         <div className="space-y-8">
           {justPlaced && (
-            <Notice tone="success" title="Order placed">
+            <Notice tone="success" title={isServiceOrder(order) ? 'Request sent' : 'Order placed'}>
               Riders near you have been notified. When one accepts, you’ll see their GCash number here. Don’t send payment before that.
             </Notice>
           )}
@@ -247,15 +256,15 @@ export default function OrderDetailPage() {
 
           <section aria-labelledby="items-heading">
             <h2 id="items-heading" className="text-heading font-semibold">
-              Items
+              {isServiceOrder(order) ? 'Request' : 'Items'}
             </h2>
-            <OrderItemsList items={order.order_items} />
+            {isServiceOrder(order) ? <TaskSummary order={order} /> : <OrderItemsList items={order.order_items} />}
             <div className="border-t border-line pt-2">
               <OrderTotals order={order} />
             </div>
           </section>
 
-          {order.status === 'completed' && (
+          {order.status === 'completed' && order.service === 'pabili' && (
             <section aria-label="Review" className="border-t border-line pt-6">
               <ReviewForm order={order} />
             </section>
@@ -273,6 +282,23 @@ export default function OrderDetailPage() {
               <a href={`tel:${rider.phone}`} className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4">
                 <Phone className="size-3.5" aria-hidden /> Call {rider.phone}
               </a>
+            </section>
+          )}
+          {isServiceOrder(order) && (
+            <section>
+              <h2 className="mb-1 font-semibold">{order.service === 'padala' ? 'Pick up from' : 'Rider goes to'}</h2>
+              <p className="text-ink-2">
+                {order.pickup_address.name}
+                {order.pickup_address.phone && ` · ${order.pickup_address.phone}`}
+                <br />
+                {order.pickup_address.line1}, {order.pickup_address.barangay}, {order.pickup_address.city}
+                {order.pickup_address.landmark && (
+                  <>
+                    <br />
+                    {order.pickup_address.landmark}
+                  </>
+                )}
+              </p>
             </section>
           )}
           <section>

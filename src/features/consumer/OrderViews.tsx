@@ -37,13 +37,16 @@ export function OrderItemsList({ items, showPrices = true }: { items: OrderItem[
 export function OrderTotals({
   order,
 }: {
-  order: Pick<Order, 'subtotal_minor' | 'delivery_fee_minor' | 'service_fee_minor' | 'small_order_fee_minor' | 'discount_minor' | 'total_minor'>;
+  order: Pick<Order, 'subtotal_minor' | 'delivery_fee_minor' | 'service_fee_minor' | 'small_order_fee_minor' | 'discount_minor' | 'total_minor'> &
+    Partial<Pick<Order, 'service'>>;
 }) {
+  const service = order.service ?? 'pabili';
   return (
     <dl className="text-small">
-      <DataRow label="Items">{formatMoney(order.subtotal_minor)}</DataRow>
+      {service === 'pabili' && <DataRow label="Items">{formatMoney(order.subtotal_minor)}</DataRow>}
+      {service === 'errand' && order.subtotal_minor > 0 && <DataRow label="Budget">{formatMoney(order.subtotal_minor)}</DataRow>}
       {order.delivery_fee_minor > 0 && <DataRow label="Delivery fee">{formatMoney(order.delivery_fee_minor)}</DataRow>}
-      {order.service_fee_minor > 0 && <DataRow label="Service fee">{formatMoney(order.service_fee_minor)}</DataRow>}
+      {order.service_fee_minor > 0 && <DataRow label={service === 'padala' ? 'Padala fee' : service === 'errand' ? 'Errand fee' : 'Service fee'}>{formatMoney(order.service_fee_minor)}</DataRow>}
       {order.small_order_fee_minor > 0 && <DataRow label="Small order fee">{formatMoney(order.small_order_fee_minor)}</DataRow>}
       {order.discount_minor > 0 && <DataRow label="Discount">−{formatMoney(order.discount_minor)}</DataRow>}
       <DataRow label="Total" strong className="mt-1 border-t border-line pt-2">

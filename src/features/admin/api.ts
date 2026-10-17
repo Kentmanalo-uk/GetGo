@@ -11,6 +11,7 @@ import type {
   DeliveryAddressSnapshot,
   MemberRole,
   MerchantCategory,
+  Order,
   OrderItem,
   Profile,
   ServiceArea,
@@ -34,10 +35,14 @@ export interface AdminOrder {
   id: string;
   code: string;
   customer_id: string;
-  merchant_id: string;
+  service: Order['service'];
+  task: Order['task'];
+  spent_minor: number | null;
+  /** Null for padala and errands. */
+  merchant_id: string | null;
   merchant_name: string;
   service_area_id: string;
-  pickup_address: { line1: string; barangay: string; city: string; phone: string | null } | null;
+  pickup_address: Order['pickup_address'] | null;
   status: OrderStatus;
   payment_status: PaymentStatus;
   customer_name: string;

@@ -130,7 +130,7 @@ GETGO never sees or moves the money. These records exist so every peso has a tra
 
 ## Known limitations
 
-- **Padala and errands** are shown as "coming later". The `bookings` table exists, but intake is not built.
+- **Padala and errands** stay within one area (town). Errand budgets are capped per area, and the rider returns unspent money in cash. GETGO doesn't hold or reconcile that change.
 - Payments are manual GCash transfers verified by riders; there is no payment-gateway confirmation.
 - There's no automatic expiry for orders a rider accepted but the customer never paid. The rider can release them, or staff can cancel.
 - Delivery estimates use the per-area "typical delivery minutes" set by admins; there is no live map or distance pricing. Fees are flat per area.

@@ -62,6 +62,16 @@ const consumerRoutes: RouteObject[] = [
         lazy: lazy(() => import('@/features/consumer/CheckoutPage')),
       },
       { path: 'orders/:orderId', lazy: lazy(() => import('@/features/consumer/OrderDetailPage')) },
+      {
+        path: 'padala',
+        handle: { hideNav: true } satisfies RouteHandle,
+        lazy: lazyNamed(() => import('@/features/services/ServiceRequestPages'), 'PadalaPage'),
+      },
+      {
+        path: 'errands',
+        handle: { hideNav: true } satisfies RouteHandle,
+        lazy: lazyNamed(() => import('@/features/services/ServiceRequestPages'), 'ErrandPage'),
+      },
       { path: 'account/addresses', lazy: lazyNamed(() => import('@/features/consumer/AccountPages'), 'AddressesPage') },
       { path: 'notifications', lazy: lazyNamed(() => import('@/features/consumer/AccountPages'), 'NotificationsPage') },
       { path: 'account/support', lazy: lazyNamed(() => import('@/features/support/SupportPages'), 'SupportListPage') },

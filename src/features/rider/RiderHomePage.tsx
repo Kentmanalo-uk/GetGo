@@ -8,9 +8,9 @@ import { SectionHeading } from '@/components/ui/Display';
 import { cx } from '@/components/ui/cx';
 import { ICON_GRADIENT } from '@/components/IconGradient';
 import { formatMoney } from '@/domain/money';
-import type { OrderStatus } from '@/domain/orderStatus';
+import type { OrderStatus, Service } from '@/domain/orderStatus';
 import { earningWindows, riderEarning, summarizeJobs, useAvailableOrders, useJobs } from './api';
-import { JobProgress, OrderCard, StatCard } from './components';
+import { JobProgress, OrderCard, ServiceTag, StatCard } from './components';
 import { useRider } from './RiderLayout';
 
 function greeting(now = new Date()) {
@@ -19,16 +19,16 @@ function greeting(now = new Date()) {
 }
 
 /** What the rider should do next on a job, in a few words. */
-export function jobNextHint(status: OrderStatus): string {
+export function jobNextHint(status: OrderStatus, service: Service = 'pabili'): string {
   switch (status) {
     case 'accepted':
       return 'Waiting for the customer’s GCash payment';
     case 'payment_submitted':
       return 'Check your GCash and confirm the payment';
     case 'buying':
-      return 'Buy the items at the store';
+      return service === 'padala' ? 'Pick up the parcel' : service === 'errand' ? 'Do the errand' : 'Buy the items at the store';
     case 'out_for_delivery':
-      return 'Deliver to the customer';
+      return service === 'padala' ? 'Deliver to the recipient' : 'Deliver to the customer';
     default:
       return '';
   }
@@ -74,14 +74,17 @@ export function RiderHomePage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-mono text-small text-ink-3">{order.code}</p>
-                    <p className="truncate text-heading font-bold">{order.merchant_name}</p>
+                    <p className="truncate text-heading font-bold">
+                      <ServiceTag service={order.service} />
+                      {order.merchant_name}
+                    </p>
                     <p className="truncate text-small text-ink-2">To Brgy. {order.delivery_address.barangay}</p>
                   </div>
                   <span className="tabular shrink-0 font-bold text-accent-ink">+{formatMoney(riderEarning(order))}</span>
                 </div>
-                <JobProgress status={order.status} className="mt-4" />
+                <JobProgress status={order.status} service={order.service} className="mt-4" />
                 <p className="mt-4 flex items-center justify-between gap-3 font-semibold">
-                  {jobNextHint(order.status)}
+                  {jobNextHint(order.status, order.service)}
                   <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
                 </p>
               </Link>

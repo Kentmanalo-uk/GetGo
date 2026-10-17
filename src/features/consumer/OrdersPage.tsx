@@ -20,7 +20,7 @@ function OrderRow({ order }: { order: OrderWithItems }) {
           </p>
           <p className="truncate text-small text-ink-3">{summary}</p>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-small text-ink-3">
-            <StatusText tone={statusTone(order.status)}>{customerStatusLabel(order.status)}</StatusText>
+            <StatusText tone={statusTone(order.status)}>{customerStatusLabel(order.status, order.service)}</StatusText>
             <span aria-hidden>·</span>
             <span>{formatDateTime(order.created_at)}</span>
             <span aria-hidden>·</span>

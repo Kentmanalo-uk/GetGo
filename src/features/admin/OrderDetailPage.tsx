@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast';
 import { formatMoney, parsePesos, toPesoInput } from '@/domain/money';
 import { useOrderRealtime } from '@/features/consumer/api';
 import { OrderItemsList, OrderTotals } from '@/features/consumer/OrderViews';
+import { TaskSummary } from '@/features/services/TaskSummary';
 import {
   VEHICLE_LABELS,
   isFinalStatus,
@@ -127,7 +128,7 @@ function RiderPanel({ order, assignments, canOperate }: { order: AdminOrder; ass
         }}
         tone="primary"
         title={current ? 'Reassign this order?' : 'Assign this order?'}
-        body={`${selected?.full_name ?? 'The rider'} is notified to take ${order.code} from ${order.merchant_name}. The customer pays this rider by GCash.${
+        body={`${selected?.full_name ?? 'The rider'} is notified to take ${order.code} (${order.merchant_name}). The customer pays this rider by GCash.${
           current ? ` ${rp?.full_name ?? 'The current rider'} is released from it.` : ''
         }`}
         confirmLabel={current ? 'Reassign' : 'Assign'}
@@ -367,9 +368,13 @@ export default function OrderDetailPage() {
         <span className="inline-flex flex-wrap items-center gap-x-2">
           <StatusText tone={orderTone(order.status)}>{ORDER_STATUS_LABELS[order.status] ?? order.status}</StatusText>
           <span aria-hidden>·</span>
-          <Link to={`/admin/merchants/${order.merchant_id}`} className="underline underline-offset-4">
-            {order.merchant_name}
-          </Link>
+          {order.merchant_id ? (
+            <Link to={`/admin/merchants/${order.merchant_id}`} className="underline underline-offset-4">
+              {order.merchant_name}
+            </Link>
+          ) : (
+            <span>{order.merchant_name}</span>
+          )}
           <span aria-hidden>·</span>
           <span>{formatDateTime(order.created_at, { year: 'numeric' })}</span>
         </span>
@@ -384,8 +389,8 @@ export default function OrderDetailPage() {
           )}
 
           <section aria-labelledby="items-heading">
-            <SectionHeading id="items-heading" title="Items" />
-            <OrderItemsList items={order.order_items} />
+            <SectionHeading id="items-heading" title={order.service === 'pabili' ? 'Items' : 'Request'} />
+            {order.service === 'pabili' ? <OrderItemsList items={order.order_items} /> : <TaskSummary order={order} />}
             <div className="border-t border-line pt-2">
               <OrderTotals order={totals} />
             </div>
@@ -464,7 +469,8 @@ export default function OrderDetailPage() {
             )}
             {order.pickup_address && (
               <p className="mt-2 text-ink-3">
-                Buy at: {order.merchant_name}, {order.pickup_address.line1}, {order.pickup_address.barangay}
+                {order.service === 'padala' ? 'Pick up from' : order.service === 'errand' ? 'Rider goes to' : 'Buy at'}:{' '}
+                {order.service === 'pabili' ? order.merchant_name : order.pickup_address.name}, {order.pickup_address.line1}, {order.pickup_address.barangay}
                 {order.pickup_address.phone && ` · ${order.pickup_address.phone}`}
               </p>
             )}

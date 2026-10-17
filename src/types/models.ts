@@ -1,4 +1,4 @@
-import type { OrderStatus, PaymentStatus } from '@/domain/orderStatus';
+import type { OrderStatus, PaymentStatus, Service } from '@/domain/orderStatus';
 
 export type AppRole = 'admin' | 'support' | 'finance' | 'rider';
 export type MemberRole = 'owner' | 'manager' | 'staff';
@@ -42,6 +42,11 @@ export interface ServiceArea {
   /** PSGC city/municipality code (official list), when picked from it. */
   psgc_code: string | null;
   province_code: string | null;
+  padala_enabled: boolean;
+  errands_enabled: boolean;
+  padala_fee_minor: number;
+  errand_fee_minor: number;
+  errand_max_budget_minor: number;
 }
 
 export interface Address {
@@ -227,13 +232,45 @@ export interface DeliveryAddressSnapshot {
   landmark: string | null;
 }
 
+export interface PadalaTask {
+  item: string;
+  size: 'small' | 'medium' | 'large';
+}
+
+export type ErrandType = 'buy' | 'bill' | 'pickup' | 'other';
+export interface ErrandTask {
+  type: ErrandType;
+  description: string;
+  budget_minor: number;
+}
+
+export const PARCEL_SIZES: Record<PadalaTask['size'], { label: string; hint: string }> = {
+  small: { label: 'Small', hint: 'Documents, a small pouch' },
+  medium: { label: 'Medium', hint: 'A shoebox, fits on a motorcycle' },
+  large: { label: 'Large', hint: 'A big box, up to 20 kg' },
+};
+
+export const ERRAND_TYPES: Record<ErrandType, { label: string; hint: string; needsBudget: boolean }> = {
+  buy: { label: 'Buy something', hint: 'Medicine, hardware, anything not on GETGO', needsBudget: true },
+  bill: { label: 'Pay a bill', hint: 'Electric, water, internet, tuition', needsBudget: true },
+  pickup: { label: 'Pick up something', hint: 'Documents, orders, items left somewhere', needsBudget: false },
+  other: { label: 'Other task', hint: 'Anything else a rider can do in town', needsBudget: false },
+};
+
 export interface Order {
   id: string;
   code: string;
   customer_id: string;
-  merchant_id: string;
+  service: Service;
+  /** The store for food and shop orders; null for padala and errands. */
+  merchant_id: string | null;
+  /** The store's name, or the request title ("Padala · Documents"). */
   merchant_name: string;
-  pickup_address: { line1: string; barangay: string; city: string; phone: string | null };
+  /** The store; for padala the sender; for errands the place to go. */
+  pickup_address: { line1: string; barangay: string; city: string; phone: string | null; name?: string; landmark?: string | null };
+  task: PadalaTask | ErrandTask | null;
+  /** Errands: what the rider spent out of the budget (subtotal). */
+  spent_minor: number | null;
   status: OrderStatus;
   payment_status: PaymentStatus;
   customer_name: string;

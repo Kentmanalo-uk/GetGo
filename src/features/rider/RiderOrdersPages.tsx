@@ -10,6 +10,7 @@ import { userMessage } from '@/lib/errors';
 import { useAcceptOrder, useAvailableOrders, useJobs, useRiderOrder } from './api';
 import { MoneySplit, OrderCard, Route, ShoppingList } from './components';
 import { useRider } from './RiderLayout';
+import { TaskSummary } from '@/features/services/TaskSummary';
 
 /** Orders waiting for a rider in the rider's area. */
 export function RiderOrdersPage() {
@@ -88,15 +89,15 @@ export function RiderOrderPreviewPage() {
             <Route order={o} showCustomer={false} />
           </section>
           <section aria-labelledby="buy-heading">
-            <SectionHeading id="buy-heading" title="What you’ll buy" />
-            <ShoppingList order={o} />
+            <SectionHeading id="buy-heading" title={o.service === 'padala' ? 'Parcel' : o.service === 'errand' ? 'Errand' : 'What you’ll buy'} />
+            {o.service === 'pabili' ? <ShoppingList order={o} /> : <TaskSummary order={o} />}
             {o.notes && <Notice className="mt-3" title="Customer note">{o.notes}</Notice>}
           </section>
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-8">
           <MoneySplit order={o} />
-          <p className="text-small text-ink-3">The customer sends the total to your GCash first. Buy the items only after you confirm the payment.</p>
+          <p className="text-small text-ink-3">The customer sends the total to your GCash first. Start only after you confirm the payment.</p>
           <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
             {accept.error && (
               <Notice tone="danger" className="mb-3">

@@ -10,9 +10,12 @@ import { ConfirmDialog } from '@/components/ui/Sheet';
 import { cx } from '@/components/ui/cx';
 import { useToast } from '@/components/ui/Toast';
 import { orderStatusLabel, riderNextStep, statusTone } from '@/domain/orderStatus';
-import { formatMoney } from '@/domain/money';
+import { formatMoney, parsePesos, toPesoInput } from '@/domain/money';
 import { userMessage } from '@/lib/errors';
 import type { OrderWithItems } from '@/types/models';
+import { Field, Input } from '@/components/ui/Field';
+import { TaskSummary } from '@/features/services/TaskSummary';
+import { useRecordSpent } from '@/features/services/api';
 import { riderEarning, useConfirmPayment, useJobs, useReleaseOrder, useRiderOrder, type Job } from './api';
 import { JobProgress, MoneySplit, OrderCard, Route, ShoppingList } from './components';
 import { useRider } from './RiderLayout';
@@ -188,7 +191,19 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
               size="lg"
               className="flex-1"
               loading={confirm.isPending}
-              onClick={() => confirm.mutateAsync({ received: true }).then(() => toast('Payment confirmed — go buy the items'), () => undefined)}
+              onClick={() =>
+                confirm.mutateAsync({ received: true }).then(
+                  () =>
+                    toast(
+                      order.service === 'padala'
+                        ? 'Payment confirmed — go pick up the parcel'
+                        : order.service === 'errand'
+                          ? 'Payment confirmed — start the errand'
+                          : 'Payment confirmed — go buy the items',
+                    ),
+                  () => undefined,
+                )
+              }
             >
               I received it
             </Button>
@@ -199,6 +214,26 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
         </section>
       );
     case 'buying':
+      if (order.service === 'padala') {
+        return (
+          <section aria-label="Pick up" className="rounded-sheet bg-accent-soft p-5">
+            <p className="text-small text-accent-ink">Step 3 · Pick up</p>
+            <p className="mt-1 text-heading font-bold">Get the parcel from {order.pickup_address.name}</p>
+            <p className="mt-2 text-small text-ink-2">Check that it matches the description and is sealed. Don’t carry cash, valuables or anything illegal.</p>
+          </section>
+        );
+      }
+      if (order.service === 'errand') {
+        return (
+          <section aria-label="Do the errand" className="rounded-sheet bg-accent-soft p-5">
+            <p className="text-small text-accent-ink">Step 3 · Do the errand</p>
+            <p className="mt-1 text-heading font-bold">
+              {order.subtotal_minor > 0 ? `Spend up to ${formatMoney(order.subtotal_minor)} at ${order.pickup_address.name}` : `Go to ${order.pickup_address.name}`}
+            </p>
+            <p className="mt-2 text-small text-ink-2">Keep the receipt. Give the customer any unspent budget in cash when you deliver.</p>
+          </section>
+        );
+      }
       return (
         <section aria-label="Buy the items" className="rounded-sheet bg-accent-soft p-5">
           <p className="text-small text-accent-ink">Step 3 · Buy the items</p>
@@ -210,8 +245,16 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
       return (
         <section aria-label="Deliver" className="rounded-sheet bg-accent-soft p-5">
           <p className="text-small text-accent-ink">Step 4 · Deliver</p>
-          <p className="mt-1 text-heading font-bold">Bring the order to {order.delivery_address.recipient_name}</p>
-          <p className="mt-2 text-small text-ink-2">Call the customer if you can’t find the address.</p>
+          <p className="mt-1 text-heading font-bold">
+            Bring the {order.service === 'padala' ? 'parcel' : order.service === 'errand' ? 'items and receipt' : 'order'} to {order.delivery_address.recipient_name}
+          </p>
+          <p className="mt-2 text-small text-ink-2">
+            {order.service === 'errand' && order.subtotal_minor > 0
+              ? 'Hand over the receipt and the change. Call the customer if you can’t find the address.'
+              : order.service === 'padala'
+                ? 'Call the recipient if you can’t find the address.'
+                : 'Call the customer if you can’t find the address.'}
+          </p>
         </section>
       );
     case 'completed':
@@ -219,7 +262,9 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
         <section aria-label="Delivered" className="flex items-center gap-4 rounded-sheet bg-accent-soft p-5">
           <CheckCircle className="size-10 shrink-0 text-accent-ink" weight="fill" aria-hidden />
           <div>
-            <p className="text-heading font-bold">Delivered · you earned {formatMoney(riderEarning(order))}</p>
+            <p className="text-heading font-bold">
+              {order.service === 'errand' ? 'Done' : 'Delivered'} · you earned {formatMoney(riderEarning(order))}
+            </p>
             <p className="text-small text-ink-2">{formatDateTime(order.completed_at)}</p>
           </div>
         </section>
@@ -233,6 +278,36 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
     default:
       return null;
   }
+}
+
+/** Errands with a budget: the rider records what they spent; the change goes back to the customer. */
+function SpentForm({ order }: { order: OrderWithItems }) {
+  const record = useRecordSpent(order.id);
+  const toast = useToast();
+  const [value, setValue] = useState(order.spent_minor != null ? toPesoInput(order.spent_minor) : '');
+  const minor = parsePesos(value);
+  const valid = minor != null && minor <= order.subtotal_minor;
+  return (
+    <form
+      className="space-y-3 rounded-sheet border border-line p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (valid) record.mutateAsync(minor).then(() => toast('Amount saved'), () => undefined);
+      }}
+    >
+      <Field
+        label="Amount spent (from the receipt)"
+        error={value && !valid ? `Enter up to ${formatMoney(order.subtotal_minor)}.` : undefined}
+        hint={valid ? `Change to return: ${formatMoney(order.subtotal_minor - minor)}` : `Budget ${formatMoney(order.subtotal_minor)}`}
+      >
+        {(p) => <Input {...p} prefix="₱" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />}
+      </Field>
+      {record.error && <Notice tone="danger">{userMessage(record.error)}</Notice>}
+      <Button type="submit" variant="secondary" block loading={record.isPending} disabled={!valid}>
+        {order.spent_minor != null ? 'Update amount' : 'Save amount'}
+      </Button>
+    </form>
+  );
 }
 
 export function RiderJobPage() {
@@ -262,7 +337,7 @@ export function RiderJobPage() {
   // Waiting for a rider (e.g. just released): the order preview handles it.
   if (o.status === 'pending') return <Navigate to={`/rider/orders/${o.id}`} replace />;
 
-  const next = riderNextStep(o.status);
+  const next = riderNextStep(o.status, o.service);
   const finished = o.status === 'completed' || o.status === 'cancelled';
   const showCustomer = !['pending', 'accepted', 'payment_submitted'].includes(o.status);
   const error = update.error ?? release.error;
@@ -271,10 +346,10 @@ export function RiderJobPage() {
   return (
     <div className={cx(hasBar ? 'pb-44 lg:pb-6' : 'pb-6')}>
       <PageHeader title={o.merchant_name} back="/rider/jobs">
-        <span className="font-mono">{o.code}</span> · <StatusText tone={statusTone(o.status)}>{orderStatusLabel(o.status)}</StatusText>
+        <span className="font-mono">{o.code}</span> · <StatusText tone={statusTone(o.status)}>{orderStatusLabel(o.status, o.service)}</StatusText>
       </PageHeader>
 
-      {!finished && <JobProgress status={o.status} className="mb-6" />}
+      {!finished && <JobProgress status={o.status} service={o.service} className="mb-6" />}
 
       <div className="space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10 lg:space-y-0">
         <div className="space-y-8">
@@ -285,8 +360,17 @@ export function RiderJobPage() {
           </section>
 
           <section aria-labelledby="list-heading">
-            <SectionHeading id="list-heading" title={o.status === 'buying' ? 'Shopping list' : 'Items'} />
-            <ShoppingList order={o} checkable={o.status === 'buying'} />
+            {o.service === 'pabili' ? (
+              <>
+                <SectionHeading id="list-heading" title={o.status === 'buying' ? 'Shopping list' : 'Items'} />
+                <ShoppingList order={o} checkable={o.status === 'buying'} />
+              </>
+            ) : (
+              <>
+                <SectionHeading id="list-heading" title={o.service === 'padala' ? 'Parcel' : 'Errand'} />
+                <TaskSummary order={o} />
+              </>
+            )}
             {o.notes && (
               <Notice className="mt-3" title="Customer note">
                 {o.notes}
@@ -297,6 +381,7 @@ export function RiderJobPage() {
 
         <aside className="space-y-4 lg:sticky lg:top-8">
           <MoneySplit order={o} />
+          {o.service === 'errand' && o.subtotal_minor > 0 && (o.status === 'buying' || o.status === 'out_for_delivery') && <SpentForm order={o} />}
           {error && <Notice tone="danger">{userMessage(error)}</Notice>}
 
           {hasBar && (
