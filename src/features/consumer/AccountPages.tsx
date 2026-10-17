@@ -4,12 +4,12 @@ import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Bell, Bike, Camera, ChevronRight, Download, FileText, LifeBuoy, LogOut, MapPin, Shield, Store, Trash2 } from '@/components/icons';
+import { Bell, Bike, ChevronRight, Download, FileText, LifeBuoy, LogOut, MapPin, Shield, Store, Trash2 } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { VerifyEmailBanner } from '@/features/auth/VerifyEmailBanner';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
-import { EmptyState, ErrorState, FormError, Notice, PageLoading, Spinner } from '@/components/ui/Feedback';
+import { EmptyState, ErrorState, FormError, Notice, PageLoading } from '@/components/ui/Feedback';
 import { PageHeader, timeAgo } from '@/components/ui/Display';
 import { ConfirmDialog, Sheet } from '@/components/ui/Sheet';
 import { cx } from '@/components/ui/cx';
@@ -35,8 +35,9 @@ const profileSchema = z.object({
 
 function ProfileForm({ onDone }: { onDone: () => void }) {
   const { profile, userId, refreshIdentity } = useAuth();
-  const removeAvatar = useSetAvatar();
+  const avatar = useSetAvatar();
   const toast = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
   const save = useMutation({
     mutationFn: async (values: z.output<typeof profileSchema>) => unwrap(await supabase.from('profiles').update(values).eq('id', userId!)),
     onSuccess: async () => {
@@ -51,6 +52,37 @@ function ProfileForm({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="space-y-4" noValidate>
       <FormError error={save.error} />
+      <div className="flex items-center gap-4">
+        <Avatar name={profile?.full_name} path={profile?.avatar_path} size="lg" />
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm" loading={avatar.isPending && avatar.variables !== null} onClick={() => inputRef.current?.click()}>
+            {profile?.avatar_path ? 'Change photo' : 'Add photo'}
+          </Button>
+          {profile?.avatar_path && (
+            <Button
+              variant="ghost"
+              size="sm"
+              loading={avatar.isPending && avatar.variables === null}
+              onClick={() => avatar.mutateAsync(null).then(() => toast('Profile picture removed'), () => undefined)}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          tabIndex={-1}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) avatar.mutateAsync(file).then(() => toast('Profile picture updated'), () => undefined);
+          }}
+        />
+      </div>
+      <FormError error={avatar.error} />
       <Field label="Full name" error={form.formState.errors.full_name?.message}>
         {(p) => <Input {...p} autoComplete="name" {...form.register('full_name')} />}
       </Field>
@@ -60,17 +92,6 @@ function ProfileForm({ onDone }: { onDone: () => void }) {
       <Button type="submit" block loading={save.isPending}>
         Save
       </Button>
-      {profile?.avatar_path && (
-        <Button
-          variant="ghost"
-          block
-          loading={removeAvatar.isPending}
-          onClick={() => removeAvatar.mutateAsync(null).then(() => toast('Profile picture removed'), () => undefined)}
-        >
-          Remove profile picture
-        </Button>
-      )}
-      <FormError error={removeAvatar.error} />
     </form>
   );
 }
@@ -89,40 +110,14 @@ function useSetAvatar() {
   });
 }
 
-/** Name, email and number as a card, with the profile picture. */
+/** Name, email and number as a card, with the profile picture (changed under Edit). */
 function ProfileCard({ onEdit }: { onEdit: () => void }) {
   const { profile } = useAuth();
-  const setAvatar = useSetAvatar();
-  const toast = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
   if (!profile) return null;
   return (
-    <section aria-label="Your profile" className="mt-5 mb-6 rounded-sheet bg-surface p-5 shadow-card ring-1 ring-line/70 lg:mt-8">
+    <section aria-label="Your profile" className="mt-5 mb-6 rounded-sheet bg-surface p-5 shadow-card lg:mt-8">
       <div className="flex items-center gap-4">
-        <div className="relative shrink-0">
-          <Avatar name={profile.full_name} path={profile.avatar_path} size="lg" />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={setAvatar.isPending}
-            aria-label={profile.avatar_path ? 'Change profile picture' : 'Add profile picture'}
-            className="absolute -right-1 -bottom-1 inline-flex size-8 items-center justify-center rounded-full bg-ink text-white ring-[3px] ring-surface transition-colors hover:bg-ink-2"
-          >
-            {setAvatar.isPending ? <Spinner className="size-4" /> : <Camera className="size-4" weight="fill" aria-hidden />}
-          </button>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="sr-only"
-            tabIndex={-1}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = '';
-              if (file) setAvatar.mutateAsync(file).then(() => toast('Profile picture updated'), () => undefined);
-            }}
-          />
-        </div>
+        <Avatar name={profile.full_name} path={profile.avatar_path} size="lg" />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-title font-bold">{profile.full_name ?? 'Your account'}</h1>
           {profile.email && <p className="truncate text-small text-ink-3">{profile.email}</p>}
@@ -132,11 +127,6 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
           Edit
         </Button>
       </div>
-      {setAvatar.error && (
-        <Notice tone="danger" className="mt-4">
-          {userMessage(setAvatar.error)}
-        </Notice>
-      )}
     </section>
   );
 }
