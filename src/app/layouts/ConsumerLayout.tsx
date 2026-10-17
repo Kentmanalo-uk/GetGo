@@ -12,6 +12,7 @@ import { useLocationContext } from '@/features/location/LocationProvider';
 import { AddressSheet } from '@/features/location/AddressSheet';
 import { useUnreadCount } from '@/features/notifications/api';
 import { env } from '@/lib/supabase';
+import { InstallPill, useInstallPill } from './InstallPill';
 
 export interface RouteHandle {
   /** Hide the mobile bottom navigation (focused flows like checkout). */
@@ -151,7 +152,7 @@ function MobileTopBar() {
   );
 }
 
-function BottomNav() {
+function BottomNav({ pill }: { pill: ReturnType<typeof useInstallPill> }) {
   const cartCount = useCartCount();
   const items = [
     { to: '/', label: 'Home', icon: Home, end: true },
@@ -162,6 +163,7 @@ function BottomNav() {
   ];
   return (
     <nav aria-label="Main" className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface lg:hidden">
+      <InstallPill pill={pill} />
       <ul className="grid h-16 grid-cols-5">
         {items.map(({ to, label, icon: Icon, end, badge }) => (
           <li key={to}>
@@ -254,17 +256,18 @@ export function SiteFooter() {
 export function ConsumerLayout() {
   const matches = useMatches();
   const hideNav = matches.some((m) => (m.handle as RouteHandle | undefined)?.hideNav);
+  const pill = useInstallPill();
   return (
     <div className="flex min-h-dvh flex-col">
       <DesktopHeader />
       {!hideNav && <MobileTopBar />}
-      <main id="main" className={cx('flex-1', !hideNav && 'pb-20 lg:pb-0')}>
+      <main id="main" className={cx('flex-1', !hideNav && (pill.show ? 'pb-36 lg:pb-0' : 'pb-20 lg:pb-0'))}>
         <Outlet />
       </main>
       <div className="hidden lg:block">
         <SiteFooter />
       </div>
-      {!hideNav && <BottomNav />}
+      {!hideNav && <BottomNav pill={pill} />}
     </div>
   );
 }
