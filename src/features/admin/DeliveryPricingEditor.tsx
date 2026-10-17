@@ -79,26 +79,26 @@ export function DeliveryPricingEditor({ area }: { area: ServiceArea }) {
         <ChoiceRow
           type="radio"
           name="pricing"
-          checked={mode === 'barangay'}
-          onChange={() => setMode('barangay')}
+          checked={mode === 'distance'}
+          onChange={() => setMode('distance')}
           label={
             <span>
-              <span className="block font-semibold">By barangay</span>
-              <span className="block text-small text-ink-3">A set price for each barangay (below), or the area’s default fee.</span>
+              <span className="block font-semibold">By distance (km) · default</span>
+              <span className="block text-small text-ink-3">
+                Measured along the road from the store or pickup pin to the customer’s pin. Customers pin their address; trips that can’t be measured pay the barangay price, never less than the base fee.
+              </span>
             </span>
           }
         />
         <ChoiceRow
           type="radio"
           name="pricing"
-          checked={mode === 'distance'}
-          onChange={() => setMode('distance')}
+          checked={mode === 'barangay'}
+          onChange={() => setMode('barangay')}
           label={
             <span>
-              <span className="block font-semibold">By distance (km)</span>
-              <span className="block text-small text-ink-3">
-                Measured along the road from the store or pickup pin to the customer’s pin. Trips without both pins use the barangay price.
-              </span>
+              <span className="block font-semibold">Per barangay</span>
+              <span className="block text-small text-ink-3">Set a price for each barangay yourself (below), or use the area’s default fee.</span>
             </span>
           }
         />

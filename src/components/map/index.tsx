@@ -45,12 +45,15 @@ export function PinField({
   center,
   label = 'Exact spot on the map',
   hint = 'Pin it so the rider finds you, and for an exact delivery fee by distance.',
+  error,
 }: {
   value: LatLng | null;
   onChange: (pin: LatLng | null) => void;
   center: LatLng;
   label?: string;
   hint?: string;
+  /** Shown under the field, e.g. when a pin is required. */
+  error?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<LatLng | null>(null);
@@ -81,31 +84,34 @@ export function PinField({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-media border border-line p-3">
-      <span className={cx('inline-flex size-10 shrink-0 items-center justify-center rounded-full', value ? 'bg-accent-soft' : 'bg-canvas')}>
-        <MapPin className={cx('size-5', value ? ICON_GRADIENT : 'text-ink-4')} weight="fill" aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-small font-semibold">{value ? 'Pinned on the map' : label}</p>
-        <p className="text-small text-ink-3">{value ? `${value.lat.toFixed(5)}, ${value.lng.toFixed(5)}` : hint}</p>
-      </div>
-      <div className="flex shrink-0 gap-1">
-        {value && (
-          <Button size="sm" variant="ghost" onClick={() => onChange(null)}>
-            Remove
+    <div>
+      <div className={cx('flex items-center gap-3 rounded-media border p-3', error ? 'border-danger' : 'border-line')}>
+        <span className={cx('inline-flex size-10 shrink-0 items-center justify-center rounded-full', value ? 'bg-accent-soft' : 'bg-canvas')}>
+          <MapPin className={cx('size-5', value ? ICON_GRADIENT : 'text-ink-4')} weight="fill" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-small font-semibold">{value ? 'Pinned on the map' : label}</p>
+          <p className="text-small text-ink-3">{value ? `${value.lat.toFixed(5)}, ${value.lng.toFixed(5)}` : hint}</p>
+        </div>
+        <div className="flex shrink-0 gap-1">
+          {value && (
+            <Button size="sm" variant="ghost" onClick={() => onChange(null)}>
+              Remove
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant={value ? 'secondary' : 'primary'}
+            onClick={() => {
+              setDraft(null);
+              setEditing(true);
+            }}
+          >
+            {value ? 'Move' : 'Pin on map'}
           </Button>
-        )}
-        <Button
-          size="sm"
-          variant={value ? 'secondary' : 'primary'}
-          onClick={() => {
-            setDraft(null);
-            setEditing(true);
-          }}
-        >
-          {value ? 'Move' : 'Pin on map'}
-        </Button>
+        </div>
       </div>
+      {error && <p className="mt-1.5 text-small text-danger">{error}</p>}
     </div>
   );
 }

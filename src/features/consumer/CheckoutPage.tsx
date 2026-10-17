@@ -13,7 +13,7 @@ import { formatMoney } from '@/domain/money';
 import { errorHint, userMessage } from '@/lib/errors';
 import { newIdempotencyKey } from '@/lib/queryClient';
 import type { QuoteItem } from '@/types/models';
-import { usePlaceOrder, useProduct, useQuote, useServiceAreas, useSetCartQuantity, useStorefront } from './api';
+import { usePlaceOrder, useProduct, useQuote, useSetCartQuantity, useStorefront } from './api';
 import { AddressForm } from './AddressForm';
 import { NoRidersNotice, useNoRidersOnline } from '@/features/riders/RidersOnline';
 import { TripMap } from '@/components/map';
@@ -107,7 +107,6 @@ export default function CheckoutPage() {
   const q = quote.data;
   const qc = useQueryClient();
   const noRiders = useNoRidersOnline(q?.merchant.service_area_id);
-  const areas = useServiceAreas();
 
   if (quote.isPending) {
     return (
@@ -129,11 +128,11 @@ export default function CheckoutPage() {
   }
 
   const address = loc.addresses.find((a) => a.id === addressId) ?? null;
-  const area = areas.data?.find((a) => a.id === q.merchant.service_area_id);
   const storePin = pinOf(storefront.data);
   const addressPin = pinOf(address);
-  // In km-priced areas, an unpinned address pays the barangay price; invite a pin.
-  const askForPin = area?.delivery_pricing === 'distance' && storePin && address && !addressPin;
+  // Delivery is priced by km here and the address isn't pinned yet.
+  const askForPin = Boolean(address) && q.issues.some((i) => i.code === 'pin_required');
+  const otherIssues = q.issues.filter((i) => i.code !== 'pin_required');
 
   const placeOrder = async () => {
     if (!addressId) return;
@@ -195,14 +194,15 @@ export default function CheckoutPage() {
             {askForPin && (
               <Notice
                 className="mt-3"
-                title="Pin your address for a fee by distance"
+                tone="warning"
+                title="Pin your address on the map"
                 action={
                   <Button size="sm" variant="secondary" onClick={() => setAddressSheet('edit')}>
                     Pin on map
                   </Button>
                 }
               >
-                Delivery here is priced by km. Without a pin, the barangay price applies.
+                Delivery here is priced by distance, from the store to your pin.
               </Notice>
             )}
           </section>
@@ -299,9 +299,9 @@ export default function CheckoutPage() {
               </DataRow>
             </dl>
 
-            {q.issues.length > 0 && (
+            {otherIssues.length > 0 && (
               <div className="mt-4 space-y-2">
-                {q.issues.map((issue) => (
+                {otherIssues.map((issue) => (
                   <Notice key={issue.code} tone="warning">
                     {issue.message}
                   </Notice>

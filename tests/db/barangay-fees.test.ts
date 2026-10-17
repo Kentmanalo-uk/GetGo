@@ -10,6 +10,8 @@ describe('delivery fees per barangay', () => {
   beforeAll(async () => {
     db = await TestDb.create();
     world = await createPlatform(db); // area default delivery fee: ₱49
+    // Areas price by km by default; these tests cover the per-barangay option.
+    await db.sql(`update service_areas set delivery_pricing = 'barangay'`);
     store = await createStore(db, world, 'owner@example.test');
   });
 

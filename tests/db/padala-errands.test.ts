@@ -59,6 +59,8 @@ describe('padala and errands', () => {
   beforeAll(async () => {
     db = await TestDb.create();
     world = await createPlatform(db); // default delivery ₱49, service fee ₱10
+    // Areas price by km by default; these tests cover the per-barangay option.
+    await db.sql(`update service_areas set delivery_pricing = 'barangay'`);
     customer = await db.createUser('ana@example.test', 'Ana Reyes', '09171112222');
     rider = await createRider(db, world, 'rider@example.test');
     otherRider = await createRider(db, world, 'other-rider@example.test');

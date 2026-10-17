@@ -128,6 +128,7 @@ export function AddressForm({ address, onSaved, onCancel }: { address?: Address;
       <PinField
         value={pinOf({ lat: form.watch('lat'), lng: form.watch('lng') })}
         center={areaCenter(area)}
+        hint={area?.delivery_pricing === 'distance' ? 'Needed for delivery: the fee is by distance from the store to your pin.' : undefined}
         onChange={(pin) => {
           form.setValue('lat', pin?.lat ?? null);
           form.setValue('lng', pin?.lng ?? null);

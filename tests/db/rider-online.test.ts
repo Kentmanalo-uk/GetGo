@@ -20,8 +20,8 @@ describe('riders online and offline', () => {
     return db.expectError(customer.id, `select place_order($1, $2, null, null, $3, $4)`, [store.merchantId, customer.addressId, q.q.total_minor, idemKey()]);
   };
   const padalaError = () => {
-    const spot = (barangay: string) => JSON.stringify({ name: 'Ana Reyes', phone: '09171112222', line1: 'Purok 2', barangay, barangay_code: null, landmark: null });
-    return db.expectError(customer.id, `select place_service_request('padala', $1, $2, $3, $4, null, 5900, $5)`, [
+    const spot = (barangay: string) => JSON.stringify({ name: 'Ana Reyes', phone: '09171112222', line1: 'Purok 2', barangay, barangay_code: null, landmark: null, lat: 12.75, lng: 121.48 });
+    return db.expectError(customer.id, `select place_service_request('padala', $1, $2, $3, $4, null, 5000, $5)`, [
       world.areaId,
       spot('Anilao'),
       spot('Formon'),

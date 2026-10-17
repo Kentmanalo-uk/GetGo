@@ -52,7 +52,10 @@ describe('delivery priced by distance', () => {
     expect(km).toBeLessThanOrEqual(13.1);
   });
 
-  test('areas keep barangay prices until the admin switches to km, but the distance is still shown', async () => {
+  test('areas price by km by default; the per-barangay option still shows the distance', async () => {
+    const [a] = await db.sql<{ p: string }>(`select delivery_pricing as p from service_areas where id = $1`, [world.areaId]);
+    expect(a.p).toBe('distance');
+    await setPricing('barangay');
     await pinAddress(north(0.03));
     const q = await quote(db, customer.id, store.merchantId, customer.addressId);
     expect(q.delivery_basis).toBe('barangay');
@@ -73,14 +76,21 @@ describe('delivery priced by distance', () => {
     expect((await quote(db, customer.id, store.merchantId, customer.addressId)).delivery_fee_minor).toBe(4000);
   });
 
-  test('an unpinned address, or a pin far outside town, falls back to the barangay price', async () => {
+  test('a pinned store needs a pinned address; a pin far outside town falls back to the barangay price', async () => {
     await pinAddress(null);
     let q = await quote(db, customer.id, store.merchantId, customer.addressId);
-    expect(q).toMatchObject({ delivery_basis: 'barangay', delivery_fee_minor: 4900, distance_km: null });
+    expect(q.can_checkout).toBe(false);
+    expect(q.issues.map((i: { code: string }) => i.code)).toContain('pin_required');
 
     await pinAddress({ lat: 14.5995, lng: 120.9842 }); // Manila
     q = await quote(db, customer.id, store.merchantId, customer.addressId);
-    expect(q).toMatchObject({ delivery_basis: 'barangay', delivery_fee_minor: 4900 });
+    expect(q).toMatchObject({ delivery_basis: 'barangay', delivery_fee_minor: 4900, can_checkout: true });
+
+    // Never below the km base fee when the trip can't be measured.
+    await db.as(world.admin, `update service_areas set delivery_fee_minor = 2000 where id = $1`, [world.areaId]);
+    q = await quote(db, customer.id, store.merchantId, customer.addressId);
+    expect(q.delivery_fee_minor).toBe(4000);
+    await db.as(world.admin, `update service_areas set delivery_fee_minor = 4900 where id = $1`, [world.areaId]);
   });
 
   test('admins can change the km price and set a maximum', async () => {
@@ -121,8 +131,20 @@ describe('delivery priced by distance', () => {
     expect(pinned).toMatchObject({ delivery_basis: 'distance', delivery_fee_minor: expectedFee(km) });
     expect(Number(pinned.distance_km)).toBe(km);
 
+    // Padala needs both stops pinned in km-priced areas.
+    const noPin = await db.expectError(customer.id, `select quote_service_request('padala', $1, $2, $3, $4)`, [world.areaId, spot('Anilao'), spot('Formon', north(0.05)), task]);
+    expect(noPin.hint).toBe('pin_required');
+    // An errand place may stay unpinned ("any pharmacy"); the drop-off may not.
+    const errandTask = JSON.stringify({ type: 'buy', description: 'Paracetamol 500mg, 1 banig', budget_minor: 20000 });
+    const [errand] = await db.as<{ q: Record<string, any> }>(customer.id, `select quote_service_request('errand', $1, $2, $3, $4) as q`, [world.areaId, spot('Anilao'), spot('Formon', north(0.05)), errandTask]);
+    expect(errand.q).toMatchObject({ delivery_basis: 'barangay', delivery_fee_minor: 4900 });
+    const errandNoPin = await db.expectError(customer.id, `select quote_service_request('errand', $1, $2, $3, $4)`, [world.areaId, spot('Anilao'), spot('Formon'), errandTask]);
+    expect(errandNoPin.hint).toBe('pin_required');
+
+    await setPricing('barangay');
     const unpinned = await q(spot('Anilao'), spot('Formon'));
     expect(unpinned).toMatchObject({ delivery_basis: 'barangay', delivery_fee_minor: 4900, distance_km: null });
+    await setPricing('distance');
 
     const [row] = await db.as<{ id: string }>(customer.id, `select place_service_request('padala', $1, $2, $3, $4, null, $5, $6) as id`, [
       world.areaId,

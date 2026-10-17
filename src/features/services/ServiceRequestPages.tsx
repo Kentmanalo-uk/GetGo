@@ -104,6 +104,7 @@ function PlaceFields({
   phoneLabel,
   phoneOptional,
   namePlaceholder,
+  pinRequired,
 }: {
   id: string;
   value: ServicePlace;
@@ -115,6 +116,8 @@ function PlaceFields({
   phoneLabel: string;
   phoneOptional?: boolean;
   namePlaceholder?: string;
+  /** The area prices by km and this stop must be pinned. */
+  pinRequired?: boolean;
 }) {
   const set = (patch: Partial<ServicePlace>) => onChange({ ...value, ...patch });
   const saved = addresses.filter((a) => a.service_area_id === area.id);
@@ -170,7 +173,8 @@ function PlaceFields({
       <PinField
         value={pinOf(value)}
         center={pinOf(value) ?? areaCenter(area)}
-        hint="Pin it so the rider finds the spot. With both stops pinned, the fee is by distance."
+        hint={pinRequired ? 'Needed: delivery here is priced by distance.' : 'Pin it so the rider finds the spot. With both stops pinned, the fee is by distance.'}
+        error={err('pin')}
         onChange={(pin) => set({ lat: pin?.lat ?? null, lng: pin?.lng ?? null })}
       />
     </>
@@ -311,6 +315,7 @@ function Intro({ kind }: { kind: ServiceKind }) {
 export function PadalaPage() {
   const { profile } = useAuth();
   const { loc, area, enabled } = useServiceArea('padala');
+  const byKm = area?.delivery_pricing === 'distance';
   const [pickup, setPickup] = useState<ServicePlace>(emptyPlace);
   const [dropoff, setDropoff] = useState<ServicePlace>(emptyPlace);
   const [item, setItem] = useState('');
@@ -331,12 +336,14 @@ export function PadalaPage() {
     collectErrors(p, 'pickup', errors);
     collectErrors(d, 'dropoff', errors);
     if (item.trim().length < 2) errors.item = 'Say what you’re sending.';
-    const ok = p.success && d.success && !errors.item && area;
+    if (byKm && !pinOf(pickup)) errors['pickup.pin'] = 'Pin the pickup on the map.';
+    if (byKm && !pinOf(dropoff)) errors['dropoff.pin'] = 'Pin the drop-off on the map.';
+    const ok = p.success && d.success && !errors.item && !errors['pickup.pin'] && !errors['dropoff.pin'] && area;
     return {
       errors,
       req: ok ? ({ service: 'padala', areaId: area.id, pickup: p.data, dropoff: d.data, task: { item: item.trim(), size } } as ServiceRequest) : null,
     };
-  }, [pickup, dropoff, item, size, area]);
+  }, [pickup, dropoff, item, size, area, byKm]);
 
   if (!loc.ready) return <PageLoading rows={3} />;
   if (!area || !enabled) return <Unavailable kind="padala" area={area} />;
@@ -352,10 +359,10 @@ export function PadalaPage() {
         <div className="space-y-10">
           <Intro kind="padala" />
           <Section step={1} title="Pick up from" hint="Who hands the parcel to the rider.">
-            <PlaceFields id="pickup" value={pickup} onChange={setPickup} errors={shown} area={area} addresses={loc.addresses} nameLabel="Sender’s name" phoneLabel="Sender’s mobile" />
+            <PlaceFields id="pickup" value={pickup} onChange={setPickup} errors={shown} area={area} addresses={loc.addresses} nameLabel="Sender’s name" phoneLabel="Sender’s mobile" pinRequired={byKm} />
           </Section>
           <Section step={2} title="Deliver to" hint="Who receives it. The rider calls this number on arrival.">
-            <PlaceFields id="dropoff" value={dropoff} onChange={setDropoff} errors={shown} area={area} addresses={loc.addresses} nameLabel="Recipient’s name" phoneLabel="Recipient’s mobile" />
+            <PlaceFields id="dropoff" value={dropoff} onChange={setDropoff} errors={shown} area={area} addresses={loc.addresses} nameLabel="Recipient’s name" phoneLabel="Recipient’s mobile" pinRequired={byKm} />
           </Section>
           <Section step={3} title="What are you sending?">
             <Field
@@ -396,6 +403,7 @@ export function PadalaPage() {
 
 export function ErrandPage() {
   const { loc, area, enabled } = useServiceArea('errand');
+  const byKm = area?.delivery_pricing === 'distance';
   const [type, setType] = useState<ErrandType>('buy');
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
@@ -420,6 +428,7 @@ export function ErrandPage() {
     if (budgetMinor == null) errors.budget = 'Enter an amount like 500.';
     else if (needsBudget && budgetMinor <= 0) errors.budget = 'Enter how much the rider may spend.';
     else if (area && budgetMinor > area.errand_max_budget_minor) errors.budget = `Budgets are up to ${formatMoney(area.errand_max_budget_minor)}.`;
+    if (byKm && !pinOf(dropoff)) errors['dropoff.pin'] = 'Pin the drop-off on the map.';
     const ok = p.success && d.success && Object.keys(errors).length === 0 && area;
     return {
       errors,
@@ -509,7 +518,7 @@ export function ErrandPage() {
             />
           </Section>
           <Section step={3} title="Bring it to">
-            <PlaceFields id="dropoff" value={dropoff} onChange={setDropoff} errors={shown} area={area} addresses={loc.addresses} nameLabel="Your name" phoneLabel="Your mobile" />
+            <PlaceFields id="dropoff" value={dropoff} onChange={setDropoff} errors={shown} area={area} addresses={loc.addresses} nameLabel="Your name" phoneLabel="Your mobile" pinRequired={byKm} />
             <Field label="Note for the rider" optional>
               {(p) => <Textarea {...p} rows={2} maxLength={300} value={notes} onChange={(e) => setNotes(e.target.value)} />}
             </Field>

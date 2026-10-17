@@ -176,7 +176,7 @@ function AreaForm({ area, onDone }: { area: ServiceArea | null; onDone: () => vo
         <Field label="Province name" error={errors.province?.message}>
           {(p) => <Input {...p} {...form.register('province')} />}
         </Field>
-        <Field label="Default delivery fee" error={errors.delivery_fee?.message} hint="For barangays without their own price.">
+        <Field label="Default delivery fee" error={errors.delivery_fee?.message} hint="When a trip can’t be measured by km, and for barangays without their own price.">
           {(p) => <Input {...p} prefix="₱" inputMode="decimal" {...form.register('delivery_fee')} />}
         </Field>
         <Field label="Service fee" error={errors.service_fee?.message} hint="Per order. Use 0 for none.">
