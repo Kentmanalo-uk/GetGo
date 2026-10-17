@@ -50,8 +50,7 @@ export function LegalConsent({
           aria-invalid={Boolean(error) || undefined}
         />
         <span>
-          I am 18 or older, and I agree to the <DocLinks documents={documents} />. I understand that stores listed on GETGO are independent and that I
-          pay my rider directly by GCash.
+          I agree to the <DocLinks documents={documents} />.
         </span>
       </label>
       {error && <p className={cx('mt-1 pl-8 text-small text-danger')}>{error}</p>}
