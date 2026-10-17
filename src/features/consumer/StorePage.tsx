@@ -322,6 +322,19 @@ export default function StorePage() {
             <div className="mt-10">
               <Reviews storeId={s.id} />
             </div>
+
+            <aside aria-label="About this listing" className="mt-10 rounded-media bg-canvas p-4 text-small text-ink-3">
+              <p>
+                <span className="font-semibold text-ink-2">{s.name}</span> is an independent store and is not affiliated with, sponsored by or partnered
+                with GETGO. A GETGO rider buys your items at the store’s counter for you. Prices come from the store’s listing and may change.
+              </p>
+              <Link
+                to={`/legal/stores?store=${encodeURIComponent(s.name)}#owners`}
+                className="mt-2 inline-block font-semibold text-ink underline underline-offset-4"
+              >
+                Is this your store? Manage or remove this listing
+              </Link>
+            </aside>
           </div>
 
           <aside className="hidden lg:block">

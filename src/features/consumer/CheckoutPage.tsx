@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { MapPin, Pencil, Plus } from '@/components/icons';
 import { useLocationContext } from '@/features/location/LocationProvider';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -237,6 +237,14 @@ export default function CheckoutPage() {
               <li>3. You enter the GCash reference number. The rider confirms it, buys your items and delivers them.</li>
             </ol>
             <p className="mt-2 text-small text-ink-3">Don’t send money before a rider accepts. You can cancel for free until you pay.</p>
+            <p className="mt-2 text-small text-ink-3">
+              {q.merchant.name} is an independent store, not affiliated with GETGO. Prices are from its listing and may differ at the counter — your rider
+              checks with you first, and any unused money comes back to you. By placing this order you agree to the{' '}
+              <Link to="/legal/terms" className="font-semibold text-ink underline underline-offset-4">
+                Terms of Service
+              </Link>
+              .
+            </p>
           </section>
         </div>
 

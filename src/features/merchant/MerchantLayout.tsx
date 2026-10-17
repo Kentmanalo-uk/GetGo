@@ -37,7 +37,7 @@ function NoStore() {
   const a = app.data;
   return (
     <div className="page-x mx-auto max-w-xl space-y-4 py-16">
-      <Logo suffix="Partner" />
+      <Logo suffix="Stores" />
       <h1 className="text-title font-bold">{a && a.status !== 'rejected' ? 'Your application is in progress' : 'You don’t have a store on GETGO yet'}</h1>
       <p className="text-ink-2">
         {a && ['submitted', 'under_review'].includes(a.status)
@@ -158,12 +158,12 @@ export function MerchantLayout() {
       <div className="min-h-dvh lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line px-4 py-6 lg:flex">
           <Link to="/merchant" className="px-3">
-            <Logo suffix="Partner" />
+            <Logo suffix="Stores" />
           </Link>
           <div className="mt-8 px-3">
             <StoreSwitcher memberships={auth.memberships} current={membership} onChange={choose} />
           </div>
-          <nav aria-label="Partner" className="mt-8 flex-1 space-y-0.5">
+          <nav aria-label="Store" className="mt-8 flex-1 space-y-0.5">
             {NAV.map(({ to, label, icon: Icon, end }) => (
               <NavLink key={to} to={to} end={end} className={linkClass}>
                 <Icon className="size-4" aria-hidden /> {label}
@@ -194,7 +194,7 @@ export function MerchantLayout() {
           </main>
         </div>
 
-        <nav aria-label="Partner" className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface lg:hidden">
+        <nav aria-label="Store" className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface lg:hidden">
           <ul className="grid h-16 grid-cols-3">
             {NAV.map(({ to, label, icon: Icon, end }) => (
               <li key={to}>

@@ -80,6 +80,11 @@ const consumerRoutes: RouteObject[] = [
     ],
   },
   { path: 'partner', lazy: lazy(() => import('@/features/partner/PartnerLandingPage')) },
+  { path: 'legal', lazy: lazyNamed(() => import('@/features/legal/LegalPages'), 'LegalIndexPage') },
+  { path: 'legal/terms', lazy: lazyNamed(() => import('@/features/legal/LegalPages'), 'TermsPage') },
+  { path: 'legal/privacy', lazy: lazyNamed(() => import('@/features/legal/LegalPages'), 'PrivacyPage') },
+  { path: 'legal/stores', lazy: lazyNamed(() => import('@/features/legal/LegalPages'), 'StoreListingsPage') },
+  { path: 'legal/riders', lazy: lazyNamed(() => import('@/features/legal/LegalPages'), 'RiderTermsPage') },
   {
     path: 'partner/apply',
     element: <RequireAuth />,

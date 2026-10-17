@@ -128,6 +128,14 @@ GETGO never sees or moves the money. These records exist so every peso has a tra
 - The service-role key, secret key and database password must stay out of the repo, the bundle and chat logs. `supabase-keys.txt` and `.env*` files are git-ignored.
 - Rotate any key that has been shared in plain text.
 
+## Legal and privacy
+
+- The public legal pages are at `/legal`: Terms of Service, Privacy Policy (Data Privacy Act, RA 10173), Store listings, and Rider Terms. Their version is `LEGAL_VERSION` in `src/features/legal/legal.ts`. Bump it when the documents change, and signed-in users will be asked to accept again.
+- Sign-up forms record acceptance in `legal_acceptances`. Accounts that haven't accepted the current version see a banner.
+- Stores are presented as independent: listings carry a non-affiliation notice and a "manage or remove this listing" request form.
+- Customers can download their data and request account deletion from Account. Deletion requests arrive as high-priority support tickets.
+- Before launch, fill in the business name, address, registration and Data Protection Officer details in **Admin → Settings**. Have a Philippine lawyer review the documents.
+
 ## Known limitations
 
 - **Padala and errands** stay within one area (town). Errand budgets are capped per area, and the rider returns unspent money in cash. GETGO doesn't hold or reconcile that change.

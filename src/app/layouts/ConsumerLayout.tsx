@@ -11,6 +11,7 @@ import { useLocationContext } from '@/features/location/LocationProvider';
 import { AddressSheet } from '@/features/location/AddressSheet';
 import { useUnreadCount } from '@/features/notifications/api';
 import { env } from '@/lib/supabase';
+import { AcceptTermsBanner } from '@/features/legal/LegalConsent';
 
 export interface RouteHandle {
   /** Hide the mobile bottom navigation (focused flows like checkout). */
@@ -91,7 +92,7 @@ function DesktopHeader() {
             Explore
           </NavLink>
           <NavLink to="/partner" className={navClass}>
-            Partner with GETGO
+            For stores
           </NavLink>
           {status === 'signed_in' ? (
             <>
@@ -195,24 +196,42 @@ function BottomNav() {
 export function SiteFooter() {
   return (
     <footer className="mt-16 border-t border-line bg-canvas">
-      <div className="page-x mx-auto grid max-w-7xl gap-8 py-10 sm:grid-cols-[1fr_auto_auto] sm:gap-16">
+      <div className="page-x mx-auto grid max-w-7xl gap-8 py-10 sm:grid-cols-[1fr_auto_auto_auto] sm:gap-12 lg:gap-16">
         <div className="space-y-2">
           <Logo />
-          <p className="max-w-xs text-small text-ink-3">Local restaurants and stores, delivered by people from your area.</p>
+          <p className="max-w-xs text-small text-ink-3">Local riders who buy, pick up and deliver for you.</p>
+          <p className="max-w-xs text-micro text-ink-4">
+            Stores shown on GETGO are independent businesses and are not affiliated with GETGO unless stated. Store names and logos belong to their owners.
+          </p>
         </div>
         <nav aria-label="For businesses" className="space-y-2 text-small">
           <p className="font-semibold">For businesses</p>
           <Link to="/partner" className="block text-ink-2 hover:text-ink">
-            Partner with GETGO
+            List or manage your store
           </Link>
           <Link to="/merchant" className="block text-ink-2 hover:text-ink">
-            Partner login
+            Store login
           </Link>
           <Link to="/rider/sign-up" className="block text-ink-2 hover:text-ink">
             Deliver with GETGO
           </Link>
           <Link to="/rider/sign-in" className="block text-ink-2 hover:text-ink">
             Rider login
+          </Link>
+        </nav>
+        <nav aria-label="Legal" className="space-y-2 text-small">
+          <p className="font-semibold">Legal</p>
+          <Link to="/legal/terms" className="block text-ink-2 hover:text-ink">
+            Terms of Service
+          </Link>
+          <Link to="/legal/privacy" className="block text-ink-2 hover:text-ink">
+            Privacy Policy
+          </Link>
+          <Link to="/legal/stores" className="block text-ink-2 hover:text-ink">
+            Store listings
+          </Link>
+          <Link to="/legal/riders" className="block text-ink-2 hover:text-ink">
+            Rider Terms
           </Link>
         </nav>
         <nav aria-label="Help" className="space-y-2 text-small">
@@ -238,6 +257,7 @@ export function ConsumerLayout() {
     <div className="flex min-h-dvh flex-col">
       <DesktopHeader />
       {!hideNav && <MobileTopBar />}
+      <AcceptTermsBanner />
       <main id="main" className={cx('flex-1', !hideNav && 'pb-20 lg:pb-0')}>
         <Outlet />
       </main>

@@ -147,6 +147,11 @@ export interface AdminPlatformSettings {
   partner_fee_note: string | null;
   support_email: string | null;
   support_phone: string | null;
+  legal_name: string | null;
+  business_address: string | null;
+  business_registration: string | null;
+  dpo_name: string | null;
+  dpo_email: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -309,7 +314,7 @@ export function usePlatformSettings() {
     queryKey: ['admin', 'platform-settings'],
     queryFn: async () =>
       unwrap(
-        await supabase.from('platform_settings').select('partner_fee_note, support_email, support_phone, updated_at').eq('id', true).maybeSingle(),
+        await supabase.from('platform_settings').select('partner_fee_note, support_email, support_phone, legal_name, business_address, business_registration, dpo_name, dpo_email, updated_at').eq('id', true).maybeSingle(),
       ) as (AdminPlatformSettings & { updated_at: string }) | null,
   });
 }
@@ -319,7 +324,7 @@ export function useSavePlatformSettings() {
   return useMutation({
     mutationFn: async (input: AdminPlatformSettings) =>
       unwrap(await supabase.from('platform_settings').update(input).eq('id', true).select('id').single()),
-    onSuccess: () => invalidate(['admin', 'platform-settings'], ['platform-settings']),
+    onSuccess: () => invalidate(['admin', 'platform-settings'], ['platform-settings'], ['legal-settings']),
   });
 }
 

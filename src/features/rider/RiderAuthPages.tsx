@@ -12,6 +12,8 @@ import { Notice, PageLoading } from '@/components/ui/Feedback';
 import { AuthLayout, safeNext } from '@/features/auth/AuthPages';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useServiceAreas } from '@/features/consumer/api';
+import { LegalConsent } from '@/features/legal/LegalConsent';
+import { legalMetadata, useAcceptLegal, type LegalDocument } from '@/features/legal/legal';
 
 const RIDER_COPY = {
   suffix: 'Rider',
@@ -35,13 +37,16 @@ const riderDetails = {
   gcash_number: mobile,
 };
 
+const agree = z.boolean().refine((v) => v, 'Please agree to continue.');
 const signUpSchema = z.object({
   ...riderDetails,
   email: z.string().trim().email('Enter a valid email address.'),
   password: z.string().min(8, 'Use at least 8 characters.'),
+  agree,
 });
 // Signed-in people already have an account: same shape, no email/password checks.
-const applySchema = z.object({ ...riderDetails, email: z.string(), password: z.string() });
+const applySchema = z.object({ ...riderDetails, email: z.string(), password: z.string(), agree });
+const RIDER_DOCUMENTS: LegalDocument[] = ['terms', 'privacy', 'rider_terms'];
 
 type SignUpIn = z.input<typeof signUpSchema>;
 type SignUpOut = z.output<typeof signUpSchema>;
@@ -170,9 +175,12 @@ export function RiderSignUpPage() {
       gcash_number: '',
       email: '',
       password: '',
+      agree: false,
     },
   });
   const e = form.formState.errors;
+  const agreed = form.watch('agree');
+  const acceptLegal = useAcceptLegal();
 
   if (auth.status === 'loading') {
     return (
@@ -196,6 +204,7 @@ export function RiderSignUpPage() {
         p_gcash_number: v.gcash_number,
       });
       if (error) return setError(userMessage(error));
+      await acceptLegal.mutateAsync(RIDER_DOCUMENTS).catch(() => undefined);
       await qc.invalidateQueries({ queryKey: ['rider'] });
       navigate('/rider', { replace: true });
       return;
@@ -206,6 +215,7 @@ export function RiderSignUpPage() {
       options: {
         emailRedirectTo: `${window.location.origin}/rider`,
         data: {
+          ...legalMetadata(RIDER_DOCUMENTS),
           full_name: v.full_name,
           phone: v.phone,
           rider_application: {
@@ -271,6 +281,12 @@ export function RiderSignUpPage() {
           </div>
         )}
         <RiderDetailsFields form={form} />
+        <LegalConsent
+          documents={RIDER_DOCUMENTS}
+          checked={agreed}
+          onChange={(v) => form.setValue('agree', v, { shouldValidate: form.formState.isSubmitted })}
+          error={e.agree?.message}
+        />
         <Button type="submit" block size="lg" loading={form.formState.isSubmitting}>
           {signedIn ? 'Submit application' : 'Create rider account'}
         </Button>

@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Bell, Bike, ChevronRight, LifeBuoy, LogOut, MapPin, Shield, Store } from '@/components/icons';
+import { Bell, Bike, ChevronRight, FileText, LifeBuoy, LogOut, MapPin, Shield, Store } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { VerifyEmailBanner } from '@/features/auth/VerifyEmailBanner';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -20,6 +20,7 @@ import { useMarkNotificationsRead, useNotifications } from '@/features/notificat
 import type { Address } from '@/types/models';
 import { useAddresses, useDeleteAddress } from './api';
 import { AddressForm } from './AddressForm';
+import { useExportMyData, useRequestAccountDeletion } from '@/features/legal/legal';
 
 const profileSchema = z.object({
   full_name: z.string().trim().min(2, 'Enter your name.').max(120),
@@ -98,7 +99,8 @@ export function AccountPage() {
           Save addresses, track orders and reorder from your favorite stores.
         </EmptyState>
         <ul className="divide-y divide-line border-t border-line">
-          <MenuLink to="/partner" icon={Store} label="Partner with GETGO" detail="Sell on GETGO" />
+          <MenuLink to="/partner" icon={Store} label="List your store" detail="Free and optional" />
+          <MenuLink to="/legal" icon={FileText} label="Terms and privacy" />
         </ul>
       </div>
     );
@@ -144,9 +146,9 @@ export function AccountPage() {
       <h2 className="mt-8 mb-1 text-small font-semibold text-ink-3">GETGO for work</h2>
       <ul className="divide-y divide-line border-y border-line">
         {auth.memberships.length > 0 ? (
-          <MenuLink to="/merchant" icon={Store} label="Partner dashboard" detail={auth.memberships.map((m) => m.merchant.name).join(', ')} />
+          <MenuLink to="/merchant" icon={Store} label="Store dashboard" detail={auth.memberships.map((m) => m.merchant.name).join(', ')} />
         ) : (
-          <MenuLink to="/partner" icon={Store} label="Partner with GETGO" detail="Apply to sell on GETGO" />
+          <MenuLink to="/partner" icon={Store} label="List your store" detail="Free and optional — not a partnership" />
         )}
         {auth.hasRole('rider') ? (
           <MenuLink to="/rider" icon={Bike} label="Rider deliveries" />
@@ -155,6 +157,8 @@ export function AccountPage() {
         )}
         {auth.isStaff && <MenuLink to="/admin" icon={Shield} label="GETGO Admin" />}
       </ul>
+
+      <YourData />
 
       <Button
         variant="ghost"
@@ -173,6 +177,64 @@ export function AccountPage() {
         <ProfileForm onDone={() => setEditing(false)} />
       </Sheet>
     </div>
+  );
+}
+
+/** Data Privacy Act rights: a copy of your data, and account deletion. */
+function YourData() {
+  const exportData = useExportMyData();
+  const deletion = useRequestAccountDeletion();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  return (
+    <section id="your-data" aria-labelledby="your-data-heading" className="scroll-mt-24">
+      <h2 id="your-data-heading" className="mt-8 mb-1 text-small font-semibold text-ink-3">
+        Privacy and legal
+      </h2>
+      <ul className="divide-y divide-line border-y border-line">
+        <MenuLink to="/legal/terms" icon={FileText} label="Terms of Service" />
+        <MenuLink to="/legal/privacy" icon={Shield} label="Privacy Policy" />
+        <MenuLink to="/legal/stores" icon={Store} label="Store listings" detail="Stores on GETGO are independent" />
+      </ul>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={exportData.isPending}
+          onClick={() => exportData.mutateAsync().then(() => toast('Your data was downloaded'), () => undefined)}
+        >
+          Download my data
+        </Button>
+        <Button variant="danger-quiet" size="sm" onClick={() => setConfirmDelete(true)}>
+          Request account deletion
+        </Button>
+      </div>
+      {exportData.error && (
+        <Notice tone="danger" className="mt-3">
+          {userMessage(exportData.error)}
+        </Notice>
+      )}
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => {
+          setConfirmDelete(false);
+          deletion.reset();
+        }}
+        title="Delete your GETGO account?"
+        body="We’ll delete your account and personal data after checking there’s nothing left to settle. Records the law requires us to keep, such as completed order and payment records, are kept securely until no longer required. GETGO support will confirm by message."
+        confirmLabel="Request deletion"
+        reason={{ label: 'Why are you leaving?', placeholder: 'Optional' }}
+        loading={deletion.isPending}
+        error={deletion.error ? <Notice tone="danger">{userMessage(deletion.error)}</Notice> : null}
+        onConfirm={async (reason) => {
+          const ticketId = await deletion.mutateAsync(reason ?? '');
+          setConfirmDelete(false);
+          toast('Deletion request sent');
+          navigate(`/account/support/${ticketId}`);
+        }}
+      />
+    </section>
   );
 }
 

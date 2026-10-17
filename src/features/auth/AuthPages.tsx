@@ -10,6 +10,8 @@ import { Field, Input } from '@/components/ui/Field';
 import { Notice } from '@/components/ui/Feedback';
 import { Logo } from '@/components/Logo';
 import { useAuth } from './AuthProvider';
+import { LegalConsent } from '@/features/legal/LegalConsent';
+import { legalMetadata } from '@/features/legal/legal';
 
 export function safeNext(value: string | null) {
   return value && value.startsWith('/') && !value.startsWith('//') ? value : '/';
@@ -119,6 +121,7 @@ const signUpSchema = z.object({
     .transform((v) => v.replace(/[\s-]/g, ''))
     .refine((v) => phonePattern.test(v), 'Enter a mobile number like 0917 123 4567.'),
   password: z.string().min(8, 'Use at least 8 characters.'),
+  agree: z.boolean().refine((v) => v, 'Please agree to continue.'),
 });
 
 export function SignUpPage() {
@@ -127,14 +130,18 @@ export function SignUpPage() {
   const next = safeNext(params.get('next'));
   const [error, setError] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
-  const form = useForm<z.input<typeof signUpSchema>, unknown, z.output<typeof signUpSchema>>({ resolver: zodResolver(signUpSchema) });
+  const form = useForm<z.input<typeof signUpSchema>, unknown, z.output<typeof signUpSchema>>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: { agree: false },
+  });
+  const agree = form.watch('agree');
 
   const onSubmit = form.handleSubmit(async ({ email, password, full_name, phone }) => {
     setError(null);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name, phone }, emailRedirectTo: `${window.location.origin}${next}` },
+      options: { data: { full_name, phone, ...legalMetadata(['terms', 'privacy']) }, emailRedirectTo: `${window.location.origin}${next}` },
     });
     if (error) return setError(userMessage(error));
     if (data.session) navigate(next, { replace: true });
@@ -177,6 +184,12 @@ export function SignUpPage() {
         <Field label="Password" hint="At least 8 characters." error={form.formState.errors.password?.message}>
           {(p) => <Input {...p} type="password" autoComplete="new-password" {...form.register('password')} />}
         </Field>
+        <LegalConsent
+          documents={['terms', 'privacy']}
+          checked={agree}
+          onChange={(v) => form.setValue('agree', v, { shouldValidate: form.formState.isSubmitted })}
+          error={form.formState.errors.agree?.message}
+        />
         <Button type="submit" block size="lg" loading={form.formState.isSubmitting}>
           Create account
         </Button>

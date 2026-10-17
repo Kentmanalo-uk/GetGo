@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { z } from 'zod';
 import { Check, ListChecks, MapPin, Package } from '@/components/icons';
 import { BarangayField } from '@/components/BarangayField';
@@ -328,7 +328,19 @@ export function PadalaPage() {
             <PlaceFields id="dropoff" value={dropoff} onChange={setDropoff} errors={shown} area={area} addresses={loc.addresses} nameLabel="Recipient’s name" phoneLabel="Recipient’s mobile" />
           </Section>
           <Section step={3} title="What are you sending?">
-            <Field label="Item" error={shown.item} hint="No cash, valuables, illegal or dangerous items.">
+            <Field
+              label="Item"
+              error={shown.item}
+              hint={
+                <>
+                  No cash, valuables, illegal or dangerous items. See the{' '}
+                  <Link to="/legal/terms#padala" target="_blank" className="font-semibold underline underline-offset-4">
+                    padala rules
+                  </Link>
+                  .
+                </>
+              }
+            >
               {(p) => <Input {...p} value={item} placeholder="Documents, a box of clothes, keys…" onChange={(e) => setItem(e.target.value)} maxLength={120} />}
             </Field>
             <fieldset>
@@ -405,6 +417,13 @@ export function ErrandPage() {
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-12">
         <div className="space-y-10">
           <Intro kind="errand" />
+          <p className="-mt-6 text-small text-ink-3">
+            Errands must be lawful and can’t include prescription medicines without a prescription, or alcohol or tobacco for minors. See the{' '}
+            <Link to="/legal/terms#padala" target="_blank" className="font-semibold text-ink underline underline-offset-4">
+              errand rules
+            </Link>
+            .
+          </p>
           <Section step={1} title="What do you need?">
             <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Kind of errand">
               {(Object.keys(ERRAND_TYPES) as ErrandType[]).map((t) => (

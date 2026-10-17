@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router';
 import { ArrowRight, Check, Clock } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ButtonLink } from '@/components/ui/Button';
@@ -48,7 +49,15 @@ const FAQ = [
   },
   {
     q: 'What does it cost?',
-    a: 'Listing your store on GETGO is free. Customers pay GETGO’s delivery and service fees separately.',
+    a: 'Listing and managing your store on GETGO is free, with no commission. Customers pay the delivery and service fees to their rider, shown to them before ordering.',
+  },
+  {
+    q: 'Does this make my store a GETGO partner?',
+    a: 'No. A listing doesn’t create a partnership, agency, franchise or exclusivity, and GETGO doesn’t sell on your behalf. You can stop managing your listing or ask us to remove it at any time.',
+  },
+  {
+    q: 'My store is already on GETGO, but I never signed up.',
+    a: 'Some stores are listed from their public menus so customers can ask a rider to buy there, and are marked as independent. You can manage, correct or remove the listing — see Store listings under Legal.',
   },
   {
     q: 'What if an item runs out?',
@@ -104,7 +113,7 @@ export default function PartnerLandingPage() {
       <section className="bg-ink text-white">
         <div className="page-x mx-auto grid max-w-7xl gap-12 py-12 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-20">
           <div className="space-y-6">
-            <p className="text-small font-semibold text-accent">GETGO Partner</p>
+            <p className="text-small font-semibold text-accent">GETGO for stores</p>
             <h1 className="text-[2rem] leading-[1.1] font-extrabold tracking-tight sm:text-[2.75rem] lg:text-[3.25rem]">List your store. Our riders do the buying.</h1>
             <p className="max-w-lg text-heading text-white/75">
               Customers nearby order from your product list. A GETGO rider comes to your counter and pays for the items like any customer — no order screen, no
@@ -112,10 +121,10 @@ export default function PartnerLandingPage() {
             </p>
             <div className="flex flex-wrap gap-3">
               <ButtonLink to={isPartner ? '/merchant' : '/partner/apply'} size="lg">
-                {isPartner ? 'Open your product list' : 'Become a partner'}
+                {isPartner ? 'Open your product list' : 'List your store'}
               </ButtonLink>
               <ButtonLink to="/merchant" size="lg" variant="secondary" className="border-white/25 bg-transparent text-white hover:bg-white/10">
-                Partner login
+                Store login
               </ButtonLink>
             </div>
           </div>
@@ -168,7 +177,7 @@ export default function PartnerLandingPage() {
                 <Check className="mt-0.5 size-5 shrink-0 text-accent-ink" aria-hidden /> Riders pay your listed prices in full at the counter.
               </li>
               <li className="flex gap-2.5">
-                <Check className="mt-0.5 size-5 shrink-0 text-accent-ink" aria-hidden /> Delivery and service fees are paid by customers to GETGO, shown to them before ordering.
+                <Check className="mt-0.5 size-5 shrink-0 text-accent-ink" aria-hidden /> Customers pay delivery and service fees to their rider, shown before ordering. No commission from you.
               </li>
             </ul>
             {s?.partner_fee_note && <p className="text-small whitespace-pre-line text-ink-3">{s.partner_fee_note}</p>}
@@ -190,7 +199,7 @@ export default function PartnerLandingPage() {
               </ul>
             </div>
             <div>
-              <p className="mb-2 font-semibold">What we ask of partners</p>
+              <p className="mb-2 font-semibold">What we ask of stores that manage a listing</p>
               <ul className="space-y-1.5 text-ink-2">
                 {EXPECTATIONS.map((e) => (
                   <li key={e}>{e}</li>
@@ -225,8 +234,15 @@ export default function PartnerLandingPage() {
             <p className="flex items-center gap-2 text-ink-3">
               <Clock className="size-4" aria-hidden /> You can save your application and finish it later.
             </p>
+            <p className="text-small text-ink-3">
+              Listing is optional and isn’t a partnership. Read the{' '}
+              <Link to="/legal/stores" className="font-semibold text-ink underline underline-offset-4">
+                Store Listing Terms
+              </Link>
+              .
+            </p>
             {(supportEmail || supportPhone) && (
-              <p className="text-small text-ink-3">Questions? Contact partner support at {[supportEmail, supportPhone].filter(Boolean).join(' or ')}.</p>
+              <p className="text-small text-ink-3">Questions? Contact store support at {[supportEmail, supportPhone].filter(Boolean).join(' or ')}.</p>
             )}
           </div>
           <ButtonLink to={isPartner ? '/merchant' : '/partner/apply'} size="lg" className="self-start sm:self-auto">

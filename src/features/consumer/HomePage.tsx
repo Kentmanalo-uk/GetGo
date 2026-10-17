@@ -301,7 +301,7 @@ export default function HomePage() {
                   </ButtonLink>
                 }
               >
-                {stores.data?.length ? 'Try another category.' : 'We’re onboarding local partners. Check back soon.'}
+                {stores.data?.length ? 'Try another category.' : 'We’re adding stores in your area. Check back soon.'}
               </EmptyState>
             ) : (
               // Open stores first; whether a store can order right now is shown on its page.

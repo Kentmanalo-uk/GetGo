@@ -19,6 +19,8 @@ import { summarizeHours, validateHours, type HoursEntry } from '@/domain/hours';
 import { formatMoney, parsePesos, toPesoInput } from '@/domain/money';
 import { userMessage } from '@/lib/errors';
 import { CATEGORY_LABELS, type MerchantCategory, type PartnerApplication } from '@/types/models';
+import { LegalConsent } from '@/features/legal/LegalConsent';
+import { useAcceptLegal } from '@/features/legal/legal';
 import {
   DOCUMENT_TYPES,
   openDocument,
@@ -459,6 +461,8 @@ function ReviewStep({ app, back, goTo }: StepProps & { goTo: (k: StepKey) => voi
   const area = areas.data?.find((a) => a.id === app.service_area_id);
   const hours = summarizeHours(app.hours);
   const [confirmed, setConfirmed] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const acceptLegal = useAcceptLegal();
 
   return (
     <div>
@@ -513,6 +517,8 @@ function ReviewStep({ app, back, goTo }: StepProps & { goTo: (k: StepKey) => voi
             checked={confirmed}
             onChange={(e) => setConfirmed(e.target.checked)}
           />
+          <LegalConsent documents={['terms', 'privacy', 'store_terms']} checked={agreed} onChange={setAgreed} />
+          <p className="pl-8 text-small text-ink-3">Listing your store on GETGO is optional and free, and doesn’t make your store a GETGO partner or agent.</p>
         </div>
       )}
       {submit.error && (
@@ -527,8 +533,8 @@ function ReviewStep({ app, back, goTo }: StepProps & { goTo: (k: StepKey) => voi
         <Button
           className="flex-1 sm:flex-none"
           loading={submit.isPending}
-          disabled={!confirmed || missing.isPending || Boolean(missing.data?.length)}
-          onClick={() => submit.mutate()}
+          disabled={!confirmed || !agreed || missing.isPending || Boolean(missing.data?.length)}
+          onClick={() => acceptLegal.mutateAsync(['terms', 'privacy', 'store_terms']).then(() => submit.mutate(), () => undefined)}
         >
           Submit application
         </Button>
@@ -603,7 +609,7 @@ export default function ApplicationPage() {
 
   const a = app.data;
   const header = (
-    <PageHeader title="Partner application" back="/partner">
+    <PageHeader title="Store listing application" back="/partner">
       {a?.business_name ?? 'Tell us about your business'}
     </PageHeader>
   );
@@ -642,7 +648,7 @@ export default function ApplicationPage() {
   return (
     <div className="page-x mx-auto max-w-5xl pb-28 sm:pb-12">
       <div className="hidden py-4 lg:block">
-        <Logo suffix="Partner" />
+        <Logo suffix="Stores" />
       </div>
       {header}
       {a.status === 'needs_changes' && a.review_notes && (
