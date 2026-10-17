@@ -18,6 +18,7 @@ export {
   CameraIcon as Camera,
   BookOpenIcon as BookOpen,
   CaretDownIcon as ChevronDown,
+  ChatTextIcon as ChatText,
   CaretRightIcon as ChevronRight,
   CaretUpDownIcon as ChevronsUpDown,
   CheckCircleIcon as CheckCircle,

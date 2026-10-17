@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { Check, ChevronRight, ListChecks, MapPin, Navigation, Package, Phone, Store } from '@/components/icons';
+import { ChatText, Check, ChevronRight, ListChecks, MapPin, Navigation, Package, Phone, Store } from '@/components/icons';
+import { smsLink } from '@/lib/deeplinks';
 import { StatusText, timeAgo } from '@/components/ui/Display';
 import { cx } from '@/components/ui/cx';
 import { orderStatusLabel, statusTone } from '@/domain/orderStatus';
@@ -139,6 +140,11 @@ export function Route({ order, showCustomer }: { order: OrderWithItems; showCust
                   <Phone className="size-4" aria-hidden /> {isStore ? 'Call store' : pickup.phone}
                 </a>
               )}
+              {pickup.phone && order.service === 'padala' && (
+                <a className={chip} href={smsLink(pickup.phone, `Hi, this is your GETGO rider for padala ${order.code}.`)}>
+                  <ChatText className="size-4" aria-hidden /> Message
+                </a>
+              )}
             </>
           )
         }
@@ -158,6 +164,9 @@ export function Route({ order, showCustomer }: { order: OrderWithItems; showCust
               </a>
               <a className={chip} href={`tel:${addr.phone}`}>
                 <Phone className="size-4" aria-hidden /> {addr.phone}
+              </a>
+              <a className={chip} href={smsLink(addr.phone, `Hi, this is your GETGO rider for order ${order.code}.`)}>
+                <ChatText className="size-4" aria-hidden /> Message
               </a>
             </>
           )

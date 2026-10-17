@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { BadgeCheck, Bike, ChevronRight, Phone, Star } from '@/components/icons';
+import { BadgeCheck, Bike, ChatText, ChevronRight, Phone, Star } from '@/components/icons';
+import { smsLink } from '@/lib/deeplinks';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState, Notice, PageLoading } from '@/components/ui/Feedback';
@@ -60,10 +61,12 @@ export function RiderStats({ profile, className }: { profile: RiderPublicProfile
 export function OrderRiderCard({
   riderId,
   rider,
+  orderCode,
   canCall,
 }: {
   riderId: string;
   rider: { full_name: string; phone: string; vehicle_type: string; plate_number: string | null };
+  orderCode: string;
   canCall: boolean;
 }) {
   const profile = useRiderPublicProfile(riderId);
@@ -71,7 +74,12 @@ export function OrderRiderCard({
   const name = p?.display_name ?? rider.full_name;
   return (
     <section aria-label="Your rider" className="rounded-sheet bg-surface p-4 shadow-card">
-      <p className="mb-3 text-small font-semibold text-ink-3">Your rider</p>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-small font-semibold text-ink-3">Your rider</p>
+        <Link to={`/riders/${riderId}`} className="inline-flex items-center gap-0.5 text-small font-semibold text-ink underline-offset-4 hover:underline">
+          View profile <ChevronRight className="size-4" aria-hidden />
+        </Link>
+      </div>
       <div className="flex items-center gap-3">
         <Avatar name={name} path={p?.avatar_path} size="md" />
         <div className="min-w-0 flex-1">
@@ -86,22 +94,22 @@ export function OrderRiderCard({
           </p>
         </div>
       </div>
-      <div className="mt-4 flex gap-2">
-        {canCall && (
+      {canCall && (
+        <div className="mt-4 flex gap-2">
           <a
             href={`tel:${rider.phone}`}
             className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-control bg-ink px-3 text-small font-semibold text-white hover:bg-ink-2"
           >
             <Phone className="size-4" aria-hidden /> Call
           </a>
-        )}
-        <Link
-          to={`/riders/${riderId}`}
-          className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-control border border-line-strong px-3 text-small font-semibold hover:bg-canvas"
-        >
-          View profile <ChevronRight className="size-4" aria-hidden />
-        </Link>
-      </div>
+          <a
+            href={smsLink(rider.phone, `Hi ${rider.full_name.split(' ')[0]}, this is about my GETGO order ${orderCode}.`)}
+            className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-control bg-accent-fill px-3 text-small font-semibold text-white hover:bg-accent-fill-hover"
+          >
+            <ChatText className="size-4" aria-hidden /> Message
+          </a>
+        </div>
+      )}
     </section>
   );
 }

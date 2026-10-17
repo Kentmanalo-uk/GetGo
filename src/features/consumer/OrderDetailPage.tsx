@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { customerCanCancel, customerStatusLabel, paymentStatusLabel, progressIndex, progressSteps } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
 import { userMessage } from '@/lib/errors';
+import { openGcash, platform } from '@/lib/deeplinks';
 import type { OrderWithItems } from '@/types/models';
 import { useOrder, useOrderRealtime, useOrderReview, useSubmitGcashPayment, useSubmitReview, useUpdateOrderStatus } from './api';
 import { OrderItemsList, OrderTotals } from './OrderViews';
@@ -69,6 +70,35 @@ function CopyValue({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * Copies the rider's GCash number and opens the GCash app so the customer can
+ * paste it and send. Shown on phones only (GCash is a mobile app).
+ */
+function OpenGcashButton({ number }: { number: string }) {
+  const toast = useToast();
+  if (platform() === 'other') return null;
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(number.replace(/[^\d+]/g, ''));
+          toast('GCash number copied — paste it in GCash');
+        } catch {
+          /* clipboard unavailable; the number is shown above */
+        }
+        openGcash();
+      }}
+      className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-control bg-[#0066dd] font-semibold text-white transition-colors hover:bg-[#0055b8]"
+    >
+      <span aria-hidden className="inline-flex size-6 items-center justify-center rounded-full bg-white text-[13px] font-extrabold text-[#0066dd]">
+        G
+      </span>
+      Open GCash
+    </button>
+  );
+}
+
 /** Tells the customer exactly where and how much to send, and takes the reference. */
 function GcashPayment({ order }: { order: OrderWithItems }) {
   const payment = order.payments;
@@ -110,6 +140,7 @@ function GcashPayment({ order }: { order: OrderWithItems }) {
         <CopyValue label="Amount" value={formatMoney(order.total_minor, { fixed: true })} />
         <CopyValue label={`GCash number · ${payment.payee_name}`} value={payment.payee_number} />
       </div>
+      <OpenGcashButton number={payment.payee_number} />
       <form
         className="mt-4 space-y-3"
         onSubmit={(e) => {
@@ -279,7 +310,9 @@ export default function OrderDetailPage() {
         </div>
 
         <aside className="space-y-6 text-small">
-          {rider && assignment && <OrderRiderCard riderId={assignment.rider_id} rider={rider} canCall={order.status !== 'completed' && order.status !== 'cancelled'} />}
+          {rider && assignment && (
+            <OrderRiderCard riderId={assignment.rider_id} rider={rider} orderCode={order.code} canCall={order.status !== 'completed' && order.status !== 'cancelled'} />
+          )}
           {isServiceOrder(order) && (
             <section>
               <h2 className="mb-1 font-semibold">{order.service === 'padala' ? 'Pick up from' : 'Rider goes to'}</h2>
