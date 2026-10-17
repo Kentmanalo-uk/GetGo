@@ -38,18 +38,18 @@ const logo = (size, variant = '') => `<span class="logo ${variant}" style="font-
  * The GETGO mark: a forward-leaning ampersand (the "&" in GET & GO) with two
  * speed lines trailing behind it, the rider motif. Drawn on a 1024 grid.
  *   tile:  'rounded' (app icon), 'square' (full bleed) or null (glyph only)
- *   glyph: 'white', 'pink' (gradient) or 'ink'
- *   bg:    'pink' (gradient), 'ink' or 'white' (when there is a tile)
+ *   glyph: 'white', 'pink' (#e0266f) or 'ink'
+ *   bg:    'pink' (#e0266f), 'ink' or 'white' (when there is a tile)
  *   scale: glyph size inside the square (for maskable and circle crops)
  */
 const AMP = 'M 690 780 L 420 510 C 347 437 365 270 468 270 C 563 270 585 375 517 435 L 388 548 C 294 630 332 792 462 792 C 560 792 620 720 680 640';
 const LINES = 'M 150 520 H 285 M 178 662 H 262';
 const mark = ({ tile = 'rounded', glyph = 'white', scale = 1, bg = 'pink' } = {}) => {
-  const fill = bg === 'pink' ? 'url(#getgo-g)' : bg === 'ink' ? C.ink : '#fff';
-  const stroke = glyph === 'white' ? '#fff' : glyph === 'ink' ? C.ink : 'url(#getgo-g)';
+  // The app's pink (#e0266f, as on its buttons and the GO box).
+  const fill = bg === 'pink' ? C.fill : bg === 'ink' ? C.ink : '#fff';
+  const stroke = glyph === 'white' ? '#fff' : glyph === 'ink' ? C.ink : C.fill;
   const rect = tile ? `<rect width="1024" height="1024" ${tile === 'rounded' ? 'rx="230" ' : ''}fill="${fill}"/>` : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
-<defs><linearGradient id="getgo-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1024" y2="1024"><stop offset="0" stop-color="#ff6aa9"/><stop offset=".55" stop-color="#ff3d8f"/><stop offset="1" stop-color="#d81b6a"/></linearGradient></defs>
 ${rect}
 <g fill="none" stroke="${stroke}" stroke-linecap="round" stroke-linejoin="round" transform="translate(512 512) scale(${scale}) translate(-512 -512) translate(28 -30)">
 <path stroke-width="100" transform="translate(130 0) skewX(-9)" d="${AMP}"/>
@@ -124,11 +124,13 @@ const DESIGNS = [
   { out: 'logo/getgo-logo-on-pink.png', w: 2400, h: 1260, bg: C.fill,
     body: `<div style="height:100%;display:grid;place-items:center">${logo(500, 'onpink')}</div>` },
   // The mark (primary symbol).
-  { out: 'logo/getgo-mark-1024.png', w: 1024, h: 1024, transparent: true, body: mark() },
-  { out: 'logo/getgo-mark-square-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', scale: 0.86 }) },
-  { out: 'logo/getgo-mark-pink-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'pink' }) },
-  { out: 'logo/getgo-mark-white-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'white' }) },
-  { out: 'logo/getgo-mark-on-dark-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', bg: 'ink', glyph: 'pink', scale: 0.86 }) },
+  // The icon on its own: pink (for light backgrounds, the favicon) and white (for pink, dark or photos).
+  { out: 'logo/getgo-icon-pink-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'pink' }) },
+  { out: 'logo/getgo-icon-white-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'white' }) },
+  // The app icon: the white icon on the app's pink.
+  { out: 'logo/getgo-app-icon-1024.png', w: 1024, h: 1024, transparent: true, body: mark() },
+  { out: 'logo/getgo-app-icon-square-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', scale: 0.86 }) },
+  { out: 'logo/getgo-icon-on-dark-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', bg: 'ink', glyph: 'pink', scale: 0.86 }) },
   // Primary logo: the mark with the wordmark.
   { out: 'logo/getgo-lockup.png', w: 2600, h: 900, transparent: true,
     body: `<div style="height:100%;display:flex;align-items:center;justify-content:center;gap:110px"><div style="width:560px;height:560px">${mark()}</div>${logo(400)}</div>` },
@@ -372,8 +374,12 @@ for (const d of DESIGNS) {
 await browser.close();
 
 // Vector files, and the same mark as the web app's favicon.
-writeFileSync(join(root, 'logo', 'getgo-mark.svg'), mark());
-writeFileSync(join(root, 'logo', 'getgo-mark-pink.svg'), mark({ tile: null, glyph: 'pink' }));
-writeFileSync(join(root, 'logo', 'getgo-mark-white.svg'), mark({ tile: null, glyph: 'white' }));
-writeFileSync(join(root, '..', 'public', 'favicon.svg'), mark());
-console.log('✓ logo/getgo-mark*.svg and public/favicon.svg');
+// Vector files. The browser tab icon is the pink icon on its own.
+// Standalone files: no fixed size, and icon-only files cropped close to the glyph.
+const file = (svg) => svg.replace(' width="100%" height="100%"', '');
+const tight = (svg) => file(svg).replace('viewBox="0 0 1024 1024"', 'viewBox="125 161 680 680"');
+writeFileSync(join(root, 'logo', 'getgo-icon-pink.svg'), tight(mark({ tile: null, glyph: 'pink' })));
+writeFileSync(join(root, 'logo', 'getgo-icon-white.svg'), tight(mark({ tile: null, glyph: 'white' })));
+writeFileSync(join(root, 'logo', 'getgo-app-icon.svg'), file(mark()));
+writeFileSync(join(root, '..', 'public', 'favicon.svg'), tight(mark({ tile: null, glyph: 'pink' })));
+console.log('✓ logo/getgo-icon-pink.svg, getgo-icon-white.svg, getgo-app-icon.svg and public/favicon.svg');
