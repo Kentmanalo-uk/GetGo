@@ -120,7 +120,8 @@ export default function ProductPage() {
           {/* Edge to edge on phones; framed on wider screens so photos shot on white still read as a picture. */}
           <div className="-mx-4 overflow-hidden sm:mx-0 sm:rounded-sheet sm:border sm:border-line lg:sticky lg:top-24">
             {p.image_path ? (
-              <MediaImage path={p.image_path} alt={p.name} eager className="aspect-[4/3] w-full lg:aspect-[5/4]" />
+              // The whole photo, never cropped: its own shape, capped in height.
+              <MediaImage path={p.image_path} alt={p.name} eager fit="contain" className="mx-auto block h-auto max-h-[75svh] w-full lg:max-h-[80vh]" />
             ) : (
               <div className="flex aspect-[4/3] w-full items-center justify-center bg-canvas lg:aspect-[5/4]">
                 <StoreMark name={s.name} logoPath={s.logo_path} size="lg" />

@@ -97,10 +97,34 @@ export function StoreMark({ name, logoPath, size = 'md', className }: { name: st
 }
 
 /** Product or cover image with a quiet placeholder when there is no photo. */
-export function MediaImage({ path, alt, className, eager }: { path?: string | null; alt: string; className?: string; eager?: boolean }) {
+/**
+ * A stored photo. 'cover' (default) fills its box and may crop the edges;
+ * 'contain' always shows the whole photo.
+ */
+export function MediaImage({
+  path,
+  alt,
+  className,
+  eager,
+  fit = 'cover',
+}: {
+  path?: string | null;
+  alt: string;
+  className?: string;
+  eager?: boolean;
+  fit?: 'cover' | 'contain';
+}) {
   const url = mediaUrl(path);
   if (!url) return <div aria-hidden className={cx('bg-canvas', className)} />;
-  return <img src={url} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" className={cx('bg-canvas object-cover', className)} />;
+  return (
+    <img
+      src={url}
+      alt={alt}
+      loading={eager ? 'eager' : 'lazy'}
+      decoding="async"
+      className={cx(fit === 'contain' ? 'object-contain' : 'bg-canvas object-cover', className)}
+    />
+  );
 }
 
 export function Tabs<T extends string>({

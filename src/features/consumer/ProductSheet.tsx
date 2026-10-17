@@ -336,7 +336,7 @@ export function ProductSheet({
       media={
         product.image_path ? (
           <div className="relative">
-            <MediaImage path={product.image_path} alt={product.name} eager className="aspect-[16/10] w-full" />
+            <MediaImage path={product.image_path} alt={product.name} eager fit="contain" className="mx-auto block h-auto max-h-[50svh] w-full" />
             <button
               type="button"
               onClick={onClose}
