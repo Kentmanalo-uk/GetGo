@@ -20,6 +20,8 @@ import { AvatarPicker } from '@/features/profile/AvatarPicker';
 import { useInstallApp } from '@/lib/install';
 import { ItemCard } from './homeSections';
 import { useRecentlyViewed } from './recentlyViewed';
+import { PastOrderRow } from './OrdersPage';
+import { useMyOrders } from './api';
 import { unwrap, userMessage } from '@/lib/errors';
 import { useMarkNotificationsRead, useNotifications } from '@/features/notifications/api';
 import type { Address } from '@/types/models';
@@ -88,26 +90,71 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
 }
 
 /** Items opened recently on this device, as a sideways row. Hidden when empty. */
-function RecentlyViewed() {
+function RecentlyViewed({ layout = 'row', className }: { layout?: 'row' | 'grid'; className?: string }) {
   const { items, clear } = useRecentlyViewed();
   if (items.length === 0) return null;
   return (
-    <section aria-labelledby="recent-heading" className="mb-8">
+    <section aria-labelledby={`recent-heading-${layout}`} className={cx('mb-8', className)}>
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 id="recent-heading" className="text-heading font-semibold">
+        <h2 id={`recent-heading-${layout}`} className="text-heading font-semibold">
           Recently viewed
         </h2>
         <button type="button" onClick={clear} className="text-small font-semibold text-ink-3 underline-offset-4 hover:text-ink hover:underline">
           Clear
         </button>
       </div>
-      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:scroll-px-0 sm:px-0">
-        {items.map((item) => (
-          <div key={item.id} className="w-32 shrink-0 snap-start sm:w-36">
-            <ItemCard item={item} />
-          </div>
-        ))}
+      {layout === 'grid' ? (
+        <div className="grid grid-cols-4 gap-x-4 gap-y-6 xl:grid-cols-5">
+          {items.map((item) => (
+            <ItemCard key={item.id} item={item} />
+          ))}
+        </div>
+      ) : (
+        <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:scroll-px-0 sm:px-0">
+          {items.map((item) => (
+            <div key={item.id} className="w-32 shrink-0 snap-start sm:w-36">
+              <ItemCard item={item} />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Desktop: the latest orders beside the account menu. */
+function RecentOrders() {
+  const orders = useMyOrders('all');
+  const { items } = useRecentlyViewed();
+  const list = orders.data?.slice(0, 4) ?? [];
+  if (orders.isPending) return null;
+  if (list.length === 0 && items.length === 0) {
+    return (
+      <section className="rounded-sheet bg-surface p-8 text-center shadow-card">
+        <p className="text-heading font-semibold">Your activity shows up here</p>
+        <p className="mt-1 text-ink-3">Items you look at and orders you place will appear on this page.</p>
+        <ButtonLink to="/" className="mt-5">
+          Start an order
+        </ButtonLink>
+      </section>
+    );
+  }
+  if (list.length === 0) return null;
+  return (
+    <section aria-labelledby="recent-orders-heading">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 id="recent-orders-heading" className="text-heading font-semibold">
+          Recent orders
+        </h2>
+        <Link to="/orders" className="text-small font-semibold text-ink-3 underline-offset-4 hover:text-ink hover:underline">
+          See all
+        </Link>
       </div>
+      <ul className="divide-y divide-line rounded-sheet bg-surface px-6 py-1 shadow-card">
+        {list.map((o) => (
+          <PastOrderRow key={o.id} order={o} />
+        ))}
+      </ul>
     </section>
   );
 }
@@ -203,52 +250,59 @@ export function AccountPage() {
 
   const p = auth.profile;
   return (
-    <div className="page-x mx-auto max-w-3xl pb-10">
-      <ProfileCard onEdit={() => setEditing(true)} />
-      <VerifyEmailBanner />
-      {!p.phone && (
-        <Notice tone="warning" className="mb-4" action={<Button size="sm" variant="dark" onClick={() => setEditing(true)}>Add</Button>}>
-          Add a mobile number so stores and riders can reach you.
-        </Notice>
-      )}
-
-      <RecentlyViewed />
-
-      <ul className="divide-y divide-line border-y border-line">
-        <MenuLink to="/account/addresses" icon={MapPin} label="Addresses" />
-        <MenuLink to="/notifications" icon={Bell} label="Notifications" />
-        <MenuLink to="/account/support" icon={LifeBuoy} label="Help and support requests" />
-        <MenuLink to="/account/privacy" icon={Shield} label="Privacy and legal" detail="Terms, privacy policy and your data" />
-        <InstallAppRow />
-      </ul>
-
-      <h2 className="mt-8 mb-1 text-small font-semibold text-ink-3">GETGO for work</h2>
-      <ul className="divide-y divide-line border-y border-line">
-        {auth.memberships.length > 0 ? (
-          <MenuLink to="/merchant" icon={Store} label="Partner dashboard" detail={auth.memberships.map((m) => m.merchant.name).join(', ')} />
-        ) : (
-          <MenuLink to="/partner" icon={Store} label="Partner with GETGO" detail="Free and optional for stores" />
+    <div className="page-x mx-auto max-w-3xl pb-10 lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start lg:gap-12">
+      <div className="lg:sticky lg:top-24">
+        <ProfileCard onEdit={() => setEditing(true)} />
+        <VerifyEmailBanner />
+        {!p.phone && (
+          <Notice tone="warning" className="mb-4" action={<Button size="sm" variant="dark" onClick={() => setEditing(true)}>Add</Button>}>
+            Add a mobile number so stores and riders can reach you.
+          </Notice>
         )}
-        {auth.hasRole('rider') ? (
-          <MenuLink to="/rider" icon={Bike} label="Rider deliveries" />
-        ) : (
-          <MenuLink to="/rider" icon={Bike} label="Deliver with GETGO" detail="Apply or check your rider application" />
-        )}
-        {auth.isStaff && <MenuLink to="/admin" icon={Shield} label="GETGO Admin" />}
-      </ul>
 
-      <Button
-        variant="ghost"
-        className="mt-6 -ml-4"
-        icon={<LogOut className="size-4" aria-hidden />}
-        onClick={async () => {
-          await auth.signOut();
-          toast('Signed out');
-          navigate('/');
-        }}
-      >
-        Sign out
-      </Button>
+        <RecentlyViewed className="lg:hidden" />
+
+        <ul className="divide-y divide-line border-y border-line">
+          <MenuLink to="/account/addresses" icon={MapPin} label="Addresses" />
+          <MenuLink to="/notifications" icon={Bell} label="Notifications" />
+          <MenuLink to="/account/support" icon={LifeBuoy} label="Help and support requests" />
+          <MenuLink to="/account/privacy" icon={Shield} label="Privacy and legal" detail="Terms, privacy policy and your data" />
+          <InstallAppRow />
+        </ul>
+
+        <h2 className="mt-8 mb-1 text-small font-semibold text-ink-3">GETGO for work</h2>
+        <ul className="divide-y divide-line border-y border-line">
+          {auth.memberships.length > 0 ? (
+            <MenuLink to="/merchant" icon={Store} label="Partner dashboard" detail={auth.memberships.map((m) => m.merchant.name).join(', ')} />
+          ) : (
+            <MenuLink to="/partner" icon={Store} label="Partner with GETGO" detail="Free and optional for stores" />
+          )}
+          {auth.hasRole('rider') ? (
+            <MenuLink to="/rider" icon={Bike} label="Rider deliveries" />
+          ) : (
+            <MenuLink to="/rider" icon={Bike} label="Deliver with GETGO" detail="Apply or check your rider application" />
+          )}
+          {auth.isStaff && <MenuLink to="/admin" icon={Shield} label="GETGO Admin" />}
+        </ul>
+
+        <Button
+          variant="ghost"
+          className="mt-6 -ml-4"
+          icon={<LogOut className="size-4" aria-hidden />}
+          onClick={async () => {
+            await auth.signOut();
+            toast('Signed out');
+            navigate('/');
+          }}
+        >
+          Sign out
+        </Button>
+      </div>
+
+      <div className="hidden space-y-10 lg:block lg:pt-8">
+        <RecentlyViewed layout="grid" className="mb-0" />
+        <RecentOrders />
+      </div>
 
       <Sheet open={editing} onClose={() => setEditing(false)} title="Your details" size="sm">
         <ProfileForm onDone={() => setEditing(false)} />

@@ -18,7 +18,7 @@ export default function CartPage() {
   const [removing, setRemoving] = useState<CartSummary | null>(null);
 
   return (
-    <div className="page-x mx-auto max-w-3xl">
+    <div className="page-x mx-auto max-w-3xl pb-10 lg:max-w-5xl">
       <PageHeader title="Cart" />
       {status === 'signed_out' ? (
         <EmptyState title="Sign in to see your cart" icon={<ShoppingBag className="size-8" />} action={<ButtonLink to="/sign-in?next=/cart">Sign in</ButtonLink>}>
@@ -37,9 +37,9 @@ export default function CartPage() {
               Each store is checked out as a separate order with its own delivery fee, because each store prepares and hands over its order independently.
             </Notice>
           )}
-          <ul className="divide-y divide-line border-y border-line">
+          <ul className="divide-y divide-line border-y border-line lg:grid lg:grid-cols-2 lg:gap-5 lg:divide-y-0 lg:border-0">
             {carts.data.map((cart) => (
-              <li key={cart.id} className="flex items-center gap-4 py-4">
+              <li key={cart.id} className="flex items-center gap-4 py-4 lg:rounded-sheet lg:bg-surface lg:p-5 lg:shadow-card">
                 <StoreMark name={cart.store?.name ?? 'Store'} logoPath={cart.store?.logo_path} size="sm" />
                 <div className="min-w-0 flex-1">
                   {cart.store ? (

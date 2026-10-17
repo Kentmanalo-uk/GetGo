@@ -76,7 +76,7 @@ function ActiveOrderCard({ order }: { order: OrderWithItems }) {
   );
 }
 
-function PastOrderRow({ order }: { order: OrderWithItems }) {
+export function PastOrderRow({ order }: { order: OrderWithItems }) {
   return (
     <li>
       <Link to={`/orders/${order.id}`} className="group flex items-center gap-4 py-4 sm:-mx-3 sm:rounded-control sm:px-3 sm:hover:bg-canvas">
@@ -117,7 +117,7 @@ export default function OrdersPage() {
   const past = orders.data?.filter((o) => !isOpenStatus(o.status)) ?? [];
 
   return (
-    <div className="page-x mx-auto max-w-3xl pb-10">
+    <div className="page-x mx-auto max-w-3xl pb-10 lg:max-w-6xl">
       <PageHeader title="Orders" />
       {orders.isPending ? (
         <PageLoading />
@@ -134,7 +134,7 @@ export default function OrdersPage() {
               <h2 id="active-heading" className="mb-3 text-heading font-semibold">
                 In progress
               </h2>
-              <div className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-2">
                 {active.map((o) => (
                   <ActiveOrderCard key={o.id} order={o} />
                 ))}
@@ -146,7 +146,7 @@ export default function OrdersPage() {
               <h2 id="past-heading" className="text-heading font-semibold">
                 Past orders
               </h2>
-              <ul className="divide-y divide-line">
+              <ul className="divide-y divide-line lg:mt-3 lg:rounded-sheet lg:bg-surface lg:px-6 lg:py-1 lg:shadow-card">
                 {past.map((o) => (
                   <PastOrderRow key={o.id} order={o} />
                 ))}

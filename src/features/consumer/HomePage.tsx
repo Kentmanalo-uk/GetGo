@@ -62,6 +62,98 @@ function ActiveOrders() {
   );
 }
 
+function greeting(now = new Date()) {
+  const h = now.getHours();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+/**
+ * Desktop-only welcome: a headline with search, and the four services as
+ * large cards (phones use the compact shortcut row instead).
+ */
+function DesktopHero({ onFilter }: { onFilter: (f: Filter) => void }) {
+  const { profile } = useAuth();
+  const { area } = useLocationContext();
+  const navigate = useNavigate();
+  const [q, setQ] = useState('');
+  const toStores = (f: Filter) => {
+    onFilter(f);
+    document.getElementById('stores-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const services = [
+    { key: 'food', label: 'Food', hint: 'Meals and snacks from kitchens near you', icon: UtensilsCrossed, available: true, go: () => toStores('food') },
+    { key: 'shops', label: 'Shops', hint: 'Groceries, sari-sari and specialty stores', icon: ShoppingBasket, available: true, go: () => toStores('shops') },
+    { key: 'padala', label: 'Padala', hint: 'Send parcels and documents across town', icon: Package, available: area?.padala_enabled ?? true, go: () => navigate('/padala') },
+    { key: 'errands', label: 'Errands', hint: 'Buy things, pay bills or pick something up', icon: ListChecks, available: area?.errands_enabled ?? true, go: () => navigate('/errands') },
+  ];
+  const firstName = profile?.full_name?.split(' ')[0];
+  return (
+    <section
+      aria-labelledby="hero-heading"
+      className="hidden items-center gap-12 rounded-[1.75rem] bg-gradient-to-br from-accent-soft via-surface to-surface p-10 shadow-card lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] xl:p-12"
+    >
+      <div>
+        <p className="text-small font-semibold text-accent-ink">
+          {greeting()}
+          {firstName ? `, ${firstName}` : ''}
+        </p>
+        <h2 id="hero-heading" className="mt-2 text-[2.75rem] leading-[1.08] font-extrabold tracking-tight">
+          What do you need today?
+        </h2>
+        <p className="mt-3 max-w-md text-heading text-ink-2">
+          Local riders in {area?.name ?? 'your town'} buy, pick up and deliver for you — paid by GCash, straight to your rider.
+        </p>
+        <form
+          role="search"
+          className="mt-7 flex max-w-lg gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+          }}
+        >
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-3" aria-hidden />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search stores and dishes"
+              aria-label="Search stores and dishes"
+              className="h-12 w-full rounded-control border border-line bg-surface pr-3 pl-12 text-body shadow-sm focus:border-ink focus:ring-2 focus:ring-accent focus:outline-none"
+            />
+          </div>
+          <Button type="submit" size="lg">
+            Search
+          </Button>
+        </form>
+      </div>
+      {/* A 2×2 set separated by thin lines (no cards). */}
+      <div className="grid grid-cols-2">
+        {services.map(({ key, label, hint, icon: Icon, available, go }, i) => (
+          <button
+            key={key}
+            type="button"
+            onClick={go}
+            disabled={!available}
+            className={cx(
+              'group flex flex-col items-start border-line p-6 text-left transition-colors hover:bg-surface/70 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent',
+              i < 2 && 'border-b',
+              i % 2 === 0 && 'border-r',
+            )}
+          >
+            <Icon className={cx('size-11 transition-transform group-hover:scale-105', ICON_GRADIENT)} weight="fill" aria-hidden />
+            <span className="mt-4 flex w-full items-center justify-between gap-2 text-heading font-bold">
+              {label}
+              <ArrowRight className="size-4 text-ink-4 transition-transform group-hover:translate-x-0.5 group-hover:text-ink" aria-hidden />
+            </span>
+            <span className="mt-0.5 text-small text-ink-3">{available ? hint : 'Not available in your area yet'}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ServiceShortcuts({ filter, onFilter }: { filter: Filter; onFilter: (f: Filter) => void }) {
   const [info, setInfo] = useState<keyof typeof UNAVAILABLE_SERVICES | null>(null);
   const navigate = useNavigate();
@@ -256,7 +348,11 @@ export default function HomePage() {
 
       <ActiveOrders />
 
-      <ServiceShortcuts filter={filter} onFilter={setFilter} />
+      <DesktopHero onFilter={setFilter} />
+
+      <div className="lg:hidden">
+        <ServiceShortcuts filter={filter} onFilter={setFilter} />
+      </div>
 
       {loc.ready && !loc.area ? (
         <EmptyState
@@ -272,9 +368,19 @@ export default function HomePage() {
 
           <section aria-labelledby="stores-heading" className="space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-2">
-              <h1 id="stores-heading" className="text-title font-bold lg:text-display">
+              <h1 id="stores-heading" className="scroll-mt-24 text-title font-bold lg:text-display">
                 {loc.area ? `Stores in ${loc.area.name}` : 'Stores'}
               </h1>
+              {(filter === 'food' || filter === 'shops') && (
+                <button
+                  type="button"
+                  onClick={() => setFilter('all')}
+                  className="hidden items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-small font-semibold text-accent-ink hover:bg-accent-soft/70 lg:inline-flex"
+                  aria-label={`Showing ${filter === 'food' ? 'food' : 'shops'} only. Show all stores`}
+                >
+                  {filter === 'food' ? 'Food' : 'Shops'} <span aria-hidden>×</span>
+                </button>
+              )}
             </div>
             {categories.length > 1 && (
               <Tabs
