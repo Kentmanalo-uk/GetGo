@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { AlertCircle, Info, RotateCw } from '@/components/icons';
+import { AlertCircle, Bike, Info, RotateCw } from '@/components/icons';
+import { ICON_GRADIENT } from '@/components/IconGradient';
 import { cx } from './cx';
 import { userMessage } from '@/lib/errors';
 
@@ -12,26 +13,46 @@ export function Spinner({ className, label }: { className?: string; label?: stri
   );
 }
 
-export function Skeleton({ className }: { className?: string }) {
-  return <div aria-hidden className={cx('skeleton rounded-md bg-canvas', className)} />;
+/** Three pink dots that pulse in turn — for small spaces. */
+export function LoadingDots({ className, label = 'Loading' }: { className?: string; label?: string }) {
+  return (
+    <span role="status" aria-label={label} className={cx('loader-fade inline-flex items-center gap-1.5', className)}>
+      {[0, 1, 2].map((i) => (
+        <span key={i} aria-hidden className="loader-dot size-2 rounded-full bg-accent-strong" style={{ animationDelay: `${i * 160}ms` }} />
+      ))}
+    </span>
+  );
 }
 
-/** Full-area loading placeholder for a page body. */
-export function PageLoading({ rows = 4 }: { rows?: number }) {
+/**
+ * GETGO's loading animation: the pink rider bobbing along a scrolling road,
+ * with speed lines behind. Fades in after a moment so quick loads don't flash.
+ */
+export function Loader({ label = 'Loading', compact, className }: { label?: string; compact?: boolean; className?: string }) {
   return (
-    <div className="space-y-5 py-6" role="status" aria-label="Loading">
-      <Skeleton className="h-7 w-1/2" />
-      {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="flex gap-4">
-          <Skeleton className="size-16 shrink-0" />
-          <div className="flex-1 space-y-2 pt-1">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/3" />
-          </div>
-        </div>
-      ))}
+    <div role="status" aria-live="polite" className={cx('loader-fade flex flex-col items-center justify-center', compact ? 'py-6' : 'py-20', className)}>
+      <div aria-hidden className={cx('relative', compact ? 'h-10 w-24' : 'h-14 w-32')}>
+        <span className="loader-wind absolute top-[38%] left-[8%] h-[3px] w-6 rounded-full bg-accent/60" />
+        <span className="loader-wind loader-wind-2 absolute top-[58%] left-[2%] h-[3px] w-4 rounded-full bg-accent/40" />
+        <span className="loader-wind loader-wind-3 absolute top-[22%] left-[14%] h-[2px] w-3 rounded-full bg-accent/35" />
+        <Bike className={cx('loader-bike absolute top-0 left-1/2 -translate-x-1/2', compact ? 'size-8' : 'size-11', ICON_GRADIENT)} weight="fill" />
+        <span className="loader-road absolute inset-x-0 bottom-0 h-[3px] rounded-full" />
+      </div>
+      <p className="mt-3 inline-flex items-baseline gap-0.5 text-small font-semibold text-ink-3">
+        {label}
+        {[0, 1, 2].map((i) => (
+          <span key={i} aria-hidden className="loader-ellipsis" style={{ animationDelay: `${i * 180}ms` }}>
+            .
+          </span>
+        ))}
+      </p>
     </div>
   );
+}
+
+/** Loading state for a page body. */
+export function PageLoading({ label }: { rows?: number; label?: string }) {
+  return <Loader label={label} />;
 }
 
 export function EmptyState({

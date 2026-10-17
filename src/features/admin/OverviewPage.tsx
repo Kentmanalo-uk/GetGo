@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ErrorState, Skeleton } from '@/components/ui/Feedback';
+import { ErrorState, LoadingDots } from '@/components/ui/Feedback';
 import { Money, PageHeader, StatusText, TextLink, timeAgo } from '@/components/ui/Display';
 import { formatMoney } from '@/domain/money';
 import { CATEGORY_LABELS } from '@/types/models';
@@ -59,10 +59,8 @@ function Queue<T>({
       </div>
       {note}
       {state.isPending ? (
-        <div className="space-y-3 border-t border-line pt-3" role="status" aria-label="Loading">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-4 w-2/3" />
+        <div className="border-t border-line pt-3">
+          <LoadingDots />
         </div>
       ) : state.isError ? (
         <ErrorState className="py-4" error={state.error} onRetry={() => state.refetch()} />
@@ -132,7 +130,7 @@ function SummaryStrip() {
       {items.map((item) => (
         <div key={item.label}>
           <dt className="text-small text-ink-3">{item.label}</dt>
-          <dd className="tabular mt-0.5 text-title font-bold">{item.value ?? <Skeleton className="h-6 w-14" />}</dd>
+          <dd className="tabular mt-0.5 text-title font-bold">{item.value ?? <LoadingDots />}</dd>
         </div>
       ))}
     </dl>

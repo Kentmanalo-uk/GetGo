@@ -2,7 +2,7 @@ import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router';
 import { Search } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Feedback';
+import { Loader } from '@/components/ui/Feedback';
 import { cx } from '@/components/ui/cx';
 import { StatusText } from '@/components/ui/Display';
 import type { ApplicationStatus, DocumentType } from '@/types/models';
@@ -152,20 +152,8 @@ export function RoleNote({ children, className }: { children: ReactNode; classNa
   return <p className={cx('text-small text-ink-3', className)}>{children}</p>;
 }
 
-export function ListSkeleton({ rows = 6 }: { rows?: number }) {
-  return (
-    <div className="divide-y divide-line border-y border-line" role="status" aria-label="Loading">
-      {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="flex items-center gap-4 py-4">
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-2/5" />
-            <Skeleton className="h-3 w-1/4" />
-          </div>
-          <Skeleton className="h-4 w-16" />
-        </div>
-      ))}
-    </div>
-  );
+export function ListSkeleton(_: { rows?: number }) {
+  return <Loader compact />;
 }
 
 export function LoadMore<T>({ paged }: { paged: PagedResult<T> }) {

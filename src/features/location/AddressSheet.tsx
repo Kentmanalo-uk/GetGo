@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Skeleton } from '@/components/ui/Feedback';
+import { LoadingDots } from '@/components/ui/Feedback';
 import { Link } from 'react-router';
 import { Check, MapPin, Plus } from '@/components/icons';
 import { Sheet } from '@/components/ui/Sheet';
@@ -70,7 +70,9 @@ export function AddressSheet({ open, onClose }: { open: boolean; onClose: () => 
               {status === 'signed_in' ? 'Or browse an area' : 'Choose your area'}
             </h3>
             {!loc.ready ? (
-              <Skeleton className="my-2.5 h-14" />
+              <div className="flex h-[76px] items-center justify-center">
+                <LoadingDots />
+              </div>
             ) : loc.areas.length === 0 ? (
               <p className="py-3 text-ink-3">GETGO isn’t operating in any area yet.</p>
             ) : (

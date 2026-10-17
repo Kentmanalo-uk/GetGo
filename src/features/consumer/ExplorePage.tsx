@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { Search, ShoppingBasket } from '@/components/icons';
 import { useLocationContext } from '@/features/location/LocationProvider';
 import { Button } from '@/components/ui/Button';
-import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback';
+import { EmptyState, ErrorState, Loader } from '@/components/ui/Feedback';
 import { PageHeader, Tabs } from '@/components/ui/Display';
 import { useExploreItems, type ExploreSection } from './api';
 import { ITEM_GRID, ItemCard } from './homeSections';
@@ -24,7 +24,7 @@ const EMPTY: Record<ExploreSection, string> = {
 /** Browse every item in the customer's area, top to bottom. */
 export default function ExplorePage() {
   const navigate = useNavigate();
-  const { area } = useLocationContext();
+  const { area, ready } = useLocationContext();
   const [params, setParams] = useSearchParams();
   const section = (SECTIONS.some((s) => s.value === params.get('section')) ? params.get('section') : 'all') as ExploreSection;
   const items = useExploreItems(area?.id ?? null, section);
@@ -32,7 +32,7 @@ export default function ExplorePage() {
 
   return (
     <div className="page-x mx-auto max-w-7xl pb-10">
-      <PageHeader title="Explore">{area ? `Everything you can order in ${area.name}` : 'Choose your area on the home page first.'}</PageHeader>
+      <PageHeader title="Explore">{area ? `Everything you can order in ${area.name}` : ready ? 'Choose your area on the home page first.' : ' '}</PageHeader>
 
       <button
         type="button"
@@ -50,16 +50,10 @@ export default function ExplorePage() {
         className="mb-5"
       />
 
-      {!area ? null : items.isPending ? (
-        <div className={ITEM_GRID} role="status" aria-label="Loading items">
-          {Array.from({ length: 8 }, (_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="aspect-square w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/3" />
-            </div>
-          ))}
-        </div>
+      {!ready ? (
+        <Loader label="Loading items" />
+      ) : !area ? null : items.isPending ? (
+        <Loader label="Loading items" />
       ) : items.isError ? (
         <ErrorState error={items.error} onRetry={() => items.refetch()} />
       ) : list.length === 0 ? (

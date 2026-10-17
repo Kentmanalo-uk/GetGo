@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
 import { ChevronDown } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
-import { ErrorState, FormError, Skeleton } from '@/components/ui/Feedback';
+import { ErrorState, FormError, LoadingDots } from '@/components/ui/Feedback';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { PageHeader, SectionHeading, StatusText, formatDate, timeAgo } from '@/components/ui/Display';
 import { ConfirmDialog } from '@/components/ui/Sheet';
@@ -47,7 +47,7 @@ function PersonDetails({ person, showRoles }: { person: AdminProfile; showRoles:
       <div>
         <p className="mb-1 text-ink-3">Recent orders</p>
         {orders.isPending ? (
-          <Skeleton className="h-10 w-full" />
+          <LoadingDots />
         ) : orders.isError ? (
           <FormError error={orders.error} />
         ) : orders.data.length === 0 ? (

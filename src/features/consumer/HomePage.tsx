@@ -7,7 +7,7 @@ import { AddressButton } from '@/app/layouts/ConsumerLayout';
 import { AddressSheet } from '@/features/location/AddressSheet';
 import { Sheet } from '@/components/ui/Sheet';
 import { Button, ButtonLink } from '@/components/ui/Button';
-import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback';
+import { EmptyState, ErrorState, Loader } from '@/components/ui/Feedback';
 import { SectionHeading, Tabs } from '@/components/ui/Display';
 import { cx } from '@/components/ui/cx';
 import { ICON_GRADIENT } from '@/components/IconGradient';
@@ -15,7 +15,7 @@ import { customerStatusLabel } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
 import { CATEGORY_LABELS, FOOD_CATEGORIES, SHOP_CATEGORIES, type MerchantCategory, type Promotion, type Storefront } from '@/types/models';
 import { useHomeFeed, useMyOrders, usePublicPromotions, useStorefronts } from './api';
-import { AllItems, FeaturedItems, ITEM_GRID, StoreRow } from './homeSections';
+import { AllItems, FeaturedItems, StoreRow } from './homeSections';
 import { StoreEntry } from './storeDisplay';
 
 type Filter = 'all' | 'food' | 'shops' | MerchantCategory;
@@ -241,37 +241,8 @@ function StoreGrid({ stores }: { stores: Storefront[] }) {
   );
 }
 
-function ItemsSkeleton() {
-  return (
-    <div className="space-y-3" role="status" aria-label="Loading items">
-      <Skeleton className="h-5 w-40" />
-      <div className={ITEM_GRID}>
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className={i >= 4 ? 'space-y-2 max-sm:hidden' : 'space-y-2'}>
-            <Skeleton className="aspect-square w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/3" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function StoreListSkeleton() {
-  return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Loading stores" role="status">
-      {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="flex gap-4 sm:block">
-          <Skeleton className="size-20 sm:aspect-[16/10] sm:h-auto sm:w-full" />
-          <div className="flex-1 space-y-2 sm:pt-3">
-            <Skeleton className="h-5 w-2/3" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return <Loader compact label="Finding stores" />;
 }
 
 export default function HomePage() {
@@ -378,18 +349,14 @@ export default function HomePage() {
             )}
           </section>
 
-          {/* Featured items below the stores; the full lists are on Explore. */}
-          {feed.isPending ? (
-            <ItemsSkeleton />
-          ) : (
-            feed.data && (
-              <>
-                <FeaturedItems id="popular-heading" section="popular" title={`Popular in ${loc.area?.name ?? 'your area'}`} items={feed.data.popular.filter(matches)} />
-                <FeaturedItems id="meals-heading" section="meals" title="Meals and snacks" items={feed.data.meals.filter(matches)} />
-                <FeaturedItems id="essentials-heading" section="essentials" title="Groceries and essentials" items={feed.data.essentials.filter(matches)} />
-                <StoreRow id="new-stores-heading" title="New on GETGO" stores={feed.data.new_stores.filter((s) => matches({ merchant_category: s.category }))} />
-              </>
-            )
+          {/* Featured items below the stores (shown once loaded); the full lists are on Explore. */}
+          {feed.data && (
+            <>
+              <FeaturedItems id="popular-heading" section="popular" title={`Popular in ${loc.area?.name ?? 'your area'}`} items={feed.data.popular.filter(matches)} />
+              <FeaturedItems id="meals-heading" section="meals" title="Meals and snacks" items={feed.data.meals.filter(matches)} />
+              <FeaturedItems id="essentials-heading" section="essentials" title="Groceries and essentials" items={feed.data.essentials.filter(matches)} />
+              <StoreRow id="new-stores-heading" title="New on GETGO" stores={feed.data.new_stores.filter((s) => matches({ merchant_category: s.category }))} />
+            </>
           )}
           {loc.area && <AllItems areaId={loc.area.id} filter={matches} />}
         </>

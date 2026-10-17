@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Button, ButtonLink } from '@/components/ui/Button';
-import { EmptyState, ErrorState, FormError, Notice, PageLoading, Skeleton } from '@/components/ui/Feedback';
+import { EmptyState, ErrorState, FormError, Notice, PageLoading, Loader } from '@/components/ui/Feedback';
 import { Money, PageHeader, SectionHeading, StatusText, StoreMark, formatDate, formatDateTime, timeAgo } from '@/components/ui/Display';
 import { ConfirmDialog } from '@/components/ui/Sheet';
 import { useToast } from '@/components/ui/Toast';
@@ -202,7 +202,7 @@ export default function MerchantDetailPage() {
           <section>
             <SectionHeading title="Recent orders" />
             {orders.isPending ? (
-              <Skeleton className="h-24 w-full" />
+              <Loader compact />
             ) : orders.isError ? (
               <ErrorState className="py-4" error={orders.error} onRetry={() => orders.refetch()} />
             ) : orders.data.length === 0 ? (
