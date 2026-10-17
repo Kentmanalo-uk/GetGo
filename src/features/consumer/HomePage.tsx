@@ -15,6 +15,7 @@ import { customerStatusLabel } from '@/domain/orderStatus';
 import { formatMoney } from '@/domain/money';
 import { CATEGORY_LABELS, FOOD_CATEGORIES, SHOP_CATEGORIES, type MerchantCategory, type Promotion, type Storefront } from '@/types/models';
 import { useHomeFeed, useMyOrders, usePublicPromotions, useStorefronts } from './api';
+import { NoRidersNotice } from '@/features/riders/RidersOnline';
 import { AllItems, FeaturedItems, StoreRow } from './homeSections';
 import { StoreEntry } from './storeDisplay';
 
@@ -281,6 +282,8 @@ export default function HomePage() {
       </div>
 
       <ActiveOrders />
+
+      <NoRidersNotice areaId={loc.area?.id} />
 
       <DesktopHero onFilter={setFilter} />
 

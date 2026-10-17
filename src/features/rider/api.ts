@@ -16,6 +16,9 @@ export interface RiderProfile {
   gcash_name: string;
   gcash_number: string;
   status: 'pending' | 'active' | 'suspended';
+  /** The rider's online switch. The app checks in while it's open (see useRiderHeartbeat). */
+  is_online: boolean;
+  last_seen_at: string | null;
   created_at: string;
 }
 
@@ -110,6 +113,45 @@ function useRiderMutation<TArgs>(fn: (args: TArgs) => PromiseLike<unknown>) {
     mutationFn: async (args: TArgs) => fn(args),
     onSettled: () => qc.invalidateQueries({ queryKey: ['rider'] }),
   });
+}
+
+/** Go online (customers in the area can order, new orders show up) or offline. */
+export function useSetOnline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (online: boolean) => unwrap(await supabase.rpc('rider_set_online', { p_online: online })) as { is_online: boolean; last_seen_at: string },
+    onSuccess: (presence) => {
+      qc.setQueriesData<RiderProfile | null>({ queryKey: ['rider', 'profile'] }, (p) => (p ? { ...p, ...presence } : p));
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['rider'] });
+      qc.invalidateQueries({ queryKey: ['riders-online'] });
+    },
+  });
+}
+
+/**
+ * While an online rider has the app open, check in every 2 minutes and when the
+ * app comes back to the foreground. Riders whose app hasn't checked in for 30
+ * minutes count as offline.
+ */
+export function useRiderHeartbeat(online: boolean) {
+  useEffect(() => {
+    if (!online) return;
+    const beat = () => {
+      void supabase.rpc('rider_heartbeat');
+    };
+    beat();
+    const timer = window.setInterval(beat, 2 * 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') beat();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [online]);
 }
 
 export function useAcceptOrder() {

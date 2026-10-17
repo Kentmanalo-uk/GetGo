@@ -189,9 +189,11 @@ export default function RidersPage() {
       </span>
     );
 
+  // Online means switched on and the app checked in within the last 30 minutes.
+  const isOnline = (r: RiderRow) => r.is_online && r.last_seen_at !== null && Date.now() - new Date(r.last_seen_at).getTime() < 30 * 60_000;
   const statusLabel = (r: RiderRow) => (
     <StatusText tone={r.status === 'active' ? 'done' : r.status === 'pending' ? 'attention' : 'danger'}>
-      {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Waiting for approval' : 'Suspended'}
+      {r.status === 'active' ? (isOnline(r) ? 'Active · Online' : 'Active · Offline') : r.status === 'pending' ? 'Waiting for approval' : 'Suspended'}
     </StatusText>
   );
 

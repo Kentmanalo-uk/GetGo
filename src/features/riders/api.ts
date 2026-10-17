@@ -3,6 +3,20 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { unwrap } from '@/lib/errors';
 
+/**
+ * How many riders are online in a service area. Customers can order only
+ * while at least one is (the database enforces it too).
+ */
+export function useOnlineRiders(areaId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['riders-online', areaId],
+    enabled: Boolean(areaId),
+    queryFn: async () => unwrap(await supabase.rpc('online_rider_count', { p_service_area_id: areaId })) as number,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+}
+
 /** What anyone signed in can see about a rider (see rider_public_profile). */
 export interface RiderPublicProfile {
   id: string;

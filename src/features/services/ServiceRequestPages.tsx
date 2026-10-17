@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { NoRidersNotice, useNoRidersOnline } from '@/features/riders/RidersOnline';
 import { Link, useNavigate } from 'react-router';
 import { z } from 'zod';
 import { Check, ListChecks, MapPin, Package } from '@/components/icons';
@@ -189,6 +191,8 @@ function Summary({
   const debounced = useDebounced(req);
   const quote = useServiceQuote(debounced);
   const place = usePlaceServiceRequest();
+  const qc = useQueryClient();
+  const noRiders = useNoRidersOnline(useLocationContext().area?.id);
   const [key] = useState(() => crypto.randomUUID());
   const q = req && debounced && JSON.stringify(req) === JSON.stringify(debounced) ? quote.data : undefined;
   const feeLabel = service === 'padala' ? 'Padala fee' : 'Errand fee';
@@ -201,6 +205,7 @@ function Summary({
       navigate(`/orders/${id}?placed=1`, { replace: true });
     } catch (error) {
       if (errorHint(error) === 'total_changed') quote.refetch();
+      if (errorHint(error) === 'no_riders_online') qc.invalidateQueries({ queryKey: ['riders-online'] });
     }
   };
 
@@ -234,8 +239,8 @@ function Summary({
       </div>
       {place.error && <Notice tone="danger">{userMessage(place.error)}</Notice>}
       <div className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 px-4 pt-3 pb-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
-        <Button block size="lg" loading={place.isPending} disabled={Boolean(req) && !q} onClick={send}>
-          <span className="tabular">{total ? `Find a rider · ${total}` : 'Find a rider'}</span>
+        <Button block size="lg" loading={place.isPending} disabled={noRiders || (Boolean(req) && !q)} onClick={send}>
+          <span className="tabular">{noRiders ? 'No riders online yet' : total ? `Find a rider · ${total}` : 'Find a rider'}</span>
         </Button>
       </div>
     </aside>
@@ -318,6 +323,7 @@ export function PadalaPage() {
       <PageHeader title="Send a padala" back="/">
         Within {area.name}
       </PageHeader>
+      <NoRidersNotice areaId={area.id} className="mb-6" />
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-12">
         <div className="space-y-10">
           <Intro kind="padala" />
@@ -414,6 +420,7 @@ export function ErrandPage() {
       <PageHeader title="Book an errand" back="/">
         Within {area.name}
       </PageHeader>
+      <NoRidersNotice areaId={area.id} className="mb-6" />
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-12">
         <div className="space-y-10">
           <Intro kind="errand" />

@@ -12,6 +12,7 @@ import type { OrderStatus, Service } from '@/domain/orderStatus';
 import { earningWindows, riderEarning, summarizeJobs, useAvailableOrders, useJobs } from './api';
 import { JobProgress, OrderCard, ServiceTag, StatCard } from './components';
 import { useRider } from './RiderLayout';
+import { OfflineOrders, PresenceCard } from './Presence';
 
 function greeting(now = new Date()) {
   const h = now.getHours();
@@ -52,6 +53,8 @@ export function RiderHomePage() {
           {greeting()}, {profile.full_name.split(' ')[0]}
         </h1>
       </header>
+
+      <PresenceCard />
 
       <section aria-label="Today" className="grid grid-cols-3 gap-3">
         <StatCard label="Earned today" value={formatMoney(today.earnedMinor)} className="col-span-3 sm:col-span-1" />
@@ -98,6 +101,7 @@ export function RiderHomePage() {
           id="nearby-heading"
           title="New orders near you"
           action={
+            profile.is_online &&
             (available.data?.length ?? 0) > 0 && (
               <Link to="/rider/orders" className="text-small font-semibold underline-offset-4 hover:underline">
                 See all {available.data!.length}
@@ -105,7 +109,9 @@ export function RiderHomePage() {
             )
           }
         />
-        {available.isPending ? (
+        {!profile.is_online ? (
+          <OfflineOrders />
+        ) : available.isPending ? (
           <PageLoading rows={2} />
         ) : available.isError ? (
           <ErrorState error={available.error} onRetry={() => available.refetch()} />

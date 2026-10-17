@@ -8,7 +8,8 @@ import { ButtonLink } from '@/components/ui/Button';
 import { ErrorState, PageLoading } from '@/components/ui/Feedback';
 import { cx } from '@/components/ui/cx';
 import { ICON_GRADIENT } from '@/components/IconGradient';
-import { useAvailableOrders, useJobs, useRiderProfile, useRiderRealtime, type RiderProfile } from './api';
+import { useAvailableOrders, useJobs, useRiderHeartbeat, useRiderProfile, useRiderRealtime, type RiderProfile } from './api';
+import { OnlineSwitch } from './Presence';
 
 interface RiderContextValue {
   profile: RiderProfile;
@@ -56,6 +57,7 @@ export function RiderLayout() {
   const jobs = useJobs(active ? auth.userId : null);
   const unread = useUnreadCount();
   useRiderRealtime(active ? auth.userId : null, active?.service_area_id ?? null);
+  useRiderHeartbeat(Boolean(active?.is_online));
 
   if (profile.isPending) {
     return (
@@ -107,7 +109,7 @@ export function RiderLayout() {
 
   const nav = [
     { to: '/rider', label: 'Home', icon: Home, end: true },
-    { to: '/rider/orders', label: 'Orders', icon: Package, badge: available.data?.length ?? 0 },
+    { to: '/rider/orders', label: 'Orders', icon: Package, badge: active.is_online ? (available.data?.length ?? 0) : 0 },
     { to: '/rider/jobs', label: 'My jobs', icon: ClipboardList, badge: jobs.data?.active.length ?? 0 },
     { to: '/rider/earnings', label: 'Earnings', icon: Wallet },
     { to: '/rider/account', label: 'Account', icon: User },
@@ -133,9 +135,10 @@ export function RiderLayout() {
             </span>
             <span className="min-w-0">
               <span className="block truncate font-semibold">{active.full_name}</span>
-              <span className="block text-small text-ink-3">Active rider</span>
+              <span className="block text-small text-ink-3">{active.is_online ? 'Online' : 'Offline'}</span>
             </span>
           </div>
+          <OnlineSwitch className="mx-3 mt-4 self-start" />
           <nav aria-label="Rider" className="mt-8 flex-1 space-y-0.5">
             {nav.map(({ to, label, icon: Icon, end, badge }) => (
               <NavLink key={to} to={to} end={end} className={sideLink}>
@@ -166,14 +169,17 @@ export function RiderLayout() {
               <Link to="/rider" aria-label="Rider home">
                 <Logo suffix="Rider" />
               </Link>
-              <Link
-                to="/rider/notifications"
-                className="relative -mr-2 inline-flex size-10 items-center justify-center"
-                aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
-              >
-                <Bell className="size-5" aria-hidden />
-                {unread > 0 && <span className="absolute top-2 right-2 size-2.5 rounded-full bg-accent-strong ring-2 ring-surface" />}
-              </Link>
+              <div className="flex items-center gap-1">
+                <OnlineSwitch />
+                <Link
+                  to="/rider/notifications"
+                  className="relative -mr-2 inline-flex size-10 items-center justify-center"
+                  aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
+                >
+                  <Bell className="size-5" aria-hidden />
+                  {unread > 0 && <span className="absolute top-2 right-2 size-2.5 rounded-full bg-accent-strong ring-2 ring-surface" />}
+                </Link>
+              </div>
             </div>
           </header>
           <main id="main" className="page-x mx-auto max-w-4xl pb-28 lg:pb-12">

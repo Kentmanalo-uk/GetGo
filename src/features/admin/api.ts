@@ -715,6 +715,8 @@ export const VEHICLE_LABELS: Record<VehicleType, string> = { motorcycle: 'Motorc
 
 export interface RiderRow {
   user_id: string;
+  is_online: boolean;
+  last_seen_at: string | null;
   full_name: string;
   phone: string;
   vehicle_type: VehicleType;

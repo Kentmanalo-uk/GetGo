@@ -10,6 +10,7 @@ import { userMessage } from '@/lib/errors';
 import { useAcceptOrder, useAvailableOrders, useJobs, useRiderOrder } from './api';
 import { MoneySplit, OrderCard, Route, ShoppingList } from './components';
 import { useRider } from './RiderLayout';
+import { OfflineOrders, useOnlineSwitch } from './Presence';
 import { TaskSummary } from '@/features/services/TaskSummary';
 
 /** Orders waiting for a rider in the rider's area. */
@@ -22,7 +23,9 @@ export function RiderOrdersPage() {
   return (
     <div className="pb-6">
       <PageHeader title="Available orders">{area ? `Waiting for a rider in ${area.name}` : 'Waiting for a rider in your area'}</PageHeader>
-      {available.isPending ? (
+      {!profile.is_online ? (
+        <OfflineOrders />
+      ) : available.isPending ? (
         <PageLoading rows={3} />
       ) : available.isError ? (
         <ErrorState error={available.error} onRetry={() => available.refetch()} />
@@ -50,6 +53,7 @@ export function RiderOrderPreviewPage() {
   const order = useRiderOrder(orderId);
   const jobs = useJobs(userId);
   const accept = useAcceptOrder();
+  const presence = useOnlineSwitch();
 
   if (order.isPending) return <PageLoading rows={3} />;
   if (order.isError) return <ErrorState error={order.error} onRetry={() => order.refetch()} />;
@@ -68,8 +72,11 @@ export function RiderOrderPreviewPage() {
     );
   }
 
+  // Offline riders go online and accept in one tap.
   const onAccept = () =>
-    accept.mutateAsync(o.id).then(
+    (presence.online ? Promise.resolve() : presence.toggle(true))
+      .then(() => accept.mutateAsync(o.id))
+      .then(
       () => {
         toast(`You accepted ${o.code}`);
         navigate(`/rider/jobs/${o.id}`, { replace: true });
@@ -104,8 +111,9 @@ export function RiderOrderPreviewPage() {
                 {userMessage(accept.error)}
               </Notice>
             )}
-            <Button block size="lg" loading={accept.isPending} onClick={onAccept}>
-              Accept order
+            {!presence.online && <p className="mb-3 text-small text-ink-3">You’re offline. Accepting puts you back online.</p>}
+            <Button block size="lg" loading={accept.isPending || presence.pending} onClick={onAccept}>
+              {presence.online ? 'Accept order' : 'Go online and accept'}
             </Button>
           </div>
         </aside>

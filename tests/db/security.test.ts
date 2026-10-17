@@ -18,6 +18,7 @@ describe('row level security and privilege boundaries', () => {
     storeB = await createStore(db, world, 'owner-b@example.test', 'Store B');
     alice = await createCustomer(db, world, 'alice@example.test');
     bob = await createCustomer(db, world, 'bob@example.test');
+    await createRider(db, world, 'online-rider@example.test');
     await db.as(alice.id, `select cart_add_item($1, $2, $3, 1)`, [storeA.productId, storeA.regularId, sel(storeA.options['Iced tea'])]);
     aliceOrder = await placeOrder(db, alice.id, storeA.merchantId, alice.addressId);
   });

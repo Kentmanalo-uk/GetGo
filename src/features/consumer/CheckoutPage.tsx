@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router';
 import { MapPin, Pencil, Plus } from '@/components/icons';
 import { useLocationContext } from '@/features/location/LocationProvider';
@@ -14,6 +15,7 @@ import { newIdempotencyKey } from '@/lib/queryClient';
 import type { QuoteItem } from '@/types/models';
 import { usePlaceOrder, useProduct, useQuote, useSetCartQuantity, useStorefront } from './api';
 import { AddressForm } from './AddressForm';
+import { NoRidersNotice, useNoRidersOnline } from '@/features/riders/RidersOnline';
 import { ProductSheet, type EditingLine } from './ProductSheet';
 
 function keyFor(merchantId: string) {
@@ -101,6 +103,8 @@ export default function CheckoutPage() {
   const place = usePlaceOrder();
   const editProduct = useProduct(editing?.product_id ?? null);
   const q = quote.data;
+  const qc = useQueryClient();
+  const noRiders = useNoRidersOnline(q?.merchant.service_area_id);
 
   if (quote.isPending) {
     return (
@@ -138,6 +142,7 @@ export default function CheckoutPage() {
       navigate(`/orders/${orderId}?placed=1`, { replace: true });
     } catch (error) {
       if (errorHint(error) === 'total_changed') quote.refetch();
+      if (errorHint(error) === 'no_riders_online') qc.invalidateQueries({ queryKey: ['riders-online'] });
     }
   };
 
@@ -150,6 +155,7 @@ export default function CheckoutPage() {
       <PageHeader title="Checkout" back={`/stores/${q.merchant.slug}`}>
         {q.merchant.name}
       </PageHeader>
+      <NoRidersNotice areaId={q.merchant.service_area_id} className="mb-6" />
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12">
         <div className="space-y-8">
@@ -285,8 +291,8 @@ export default function CheckoutPage() {
             )}
 
             <div className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface px-4 pt-3 pb-3 lg:static lg:mt-6 lg:border-0 lg:p-0">
-              <Button block size="lg" onClick={placeOrder} loading={place.isPending} disabled={!q.can_checkout || quote.isFetching || place.isPending}>
-                <span className="tabular">Place order · {formatMoney(q.total_minor)}</span>
+              <Button block size="lg" onClick={placeOrder} loading={place.isPending} disabled={!q.can_checkout || noRiders || quote.isFetching || place.isPending}>
+                <span className="tabular">{noRiders ? 'No riders online yet' : `Place order · ${formatMoney(q.total_minor)}`}</span>
               </Button>
             </div>
           </div>

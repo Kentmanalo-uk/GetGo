@@ -156,10 +156,12 @@ export async function createCustomer(db: TestDb, world: World, email: string, ar
 }
 
 let riderCounter = 0;
-export async function createRider(db: TestDb, world: World, email: string, areaId = world.areaId) {
+/** An active rider, online unless `online: false` (customers can order only while a rider is online). */
+export async function createRider(db: TestDb, world: World, email: string, areaId = world.areaId, opts: { online?: boolean } = {}) {
   const id = await db.createUser(email, 'Rico Rider');
   const number = `0917${String(1000000 + ++riderCounter).slice(-7)}`;
   await db.as(world.admin, `select create_rider($1, 'Rico Rider', '09190000000', 'motorcycle', 'ABC 123', $2, 'Rico R.', $3)`, [email, areaId, number]);
+  if (opts.online ?? true) await db.as(id, `select rider_set_online(true)`);
   return id;
 }
 

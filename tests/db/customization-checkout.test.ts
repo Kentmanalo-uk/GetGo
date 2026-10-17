@@ -94,6 +94,7 @@ describe('checkout validation', () => {
     db = await TestDb.create();
     world = await createPlatform(db);
     store = await createStore(db, world, 'owner@example.test');
+    await createRider(db, world, 'online-rider@example.test');
   });
 
   const addMeal = (customer: string, qty = 1) =>
