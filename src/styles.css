@@ -136,12 +136,12 @@ dialog.sheet::backdrop {
   background: rgb(22 20 26 / 0.45);
 }
 @media (prefers-reduced-motion: no-preference) {
-  /* Phones: the sheet slides up from the bottom and back down; the backdrop fades. */
+  /* Phones: the sheet slides up and back down; opening mirrors closing (same length, reversed curve). */
   dialog.sheet[open] .sheet-panel {
-    animation: sheet-in 360ms cubic-bezier(0.32, 0.72, 0, 1) both;
+    animation: sheet-in 240ms cubic-bezier(0, 0, 0.6, 1) both;
   }
   dialog.sheet[open]::backdrop {
-    animation: backdrop-in 260ms ease-out both;
+    animation: backdrop-in 240ms ease-out both;
   }
   dialog.sheet[open][data-closing] .sheet-panel {
     animation: sheet-out 240ms cubic-bezier(0.4, 0, 1, 1) both;
@@ -152,7 +152,7 @@ dialog.sheet::backdrop {
   /* Larger screens: a centered dialog that gently scales and fades. */
   @media (min-width: 640px) {
     dialog.sheet[open] .sheet-panel {
-      animation: dialog-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      animation: dialog-in 160ms ease-out both;
     }
     dialog.sheet[open][data-closing] .sheet-panel {
       animation: dialog-out 160ms ease-in both;

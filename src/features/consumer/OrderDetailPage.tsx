@@ -12,6 +12,8 @@ import { customerCanCancel, customerStatusLabel, paymentStatusLabel, progressInd
 import { formatMoney } from '@/domain/money';
 import { userMessage } from '@/lib/errors';
 import { openGcash, platform } from '@/lib/deeplinks';
+// GCash's own icon (from gcash.com), used only to label the button that opens the GCash app.
+import gcashIcon from '@/assets/gcash-icon-white.svg';
 import type { OrderWithItems } from '@/types/models';
 import { useOrder, useOrderRealtime, useOrderReview, useSubmitGcashPayment, useSubmitReview, useUpdateOrderStatus } from './api';
 import { OrderItemsList, OrderTotals } from './OrderViews';
@@ -91,9 +93,7 @@ function OpenGcashButton({ number }: { number: string }) {
       }}
       className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-control bg-[#0066dd] font-semibold text-white transition-colors hover:bg-[#0055b8]"
     >
-      <span aria-hidden className="inline-flex size-6 items-center justify-center rounded-full bg-white text-[13px] font-extrabold text-[#0066dd]">
-        G
-      </span>
+      <img src={gcashIcon} alt="" aria-hidden className="h-5 w-auto" />
       Open GCash
     </button>
   );
