@@ -32,38 +32,41 @@ export function Sheet({
   const ref = useRef<HTMLDialogElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  // Content stays mounted while the closing animation plays.
+  // Content stays mounted while the closing transition plays.
   const [mounted, setMounted] = useState(open);
-  const [closing, setClosing] = useState(false);
+  // "open" is applied a frame after the dialog shows, so the panel is painted
+  // in its closed position first and the transition always plays smoothly.
+  const [state, setState] = useState<'open' | 'closed'>('closed');
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     if (open) {
       setMounted(true);
-      setClosing(false);
       if (!dialog.open) {
         dialog.showModal();
         document.documentElement.style.overflow = 'hidden';
       }
-      return;
+      let second = 0;
+      const first = requestAnimationFrame(() => {
+        second = requestAnimationFrame(() => setState('open'));
+      });
+      return () => {
+        cancelAnimationFrame(first);
+        cancelAnimationFrame(second);
+      };
     }
     if (!dialog.open) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    setState('closed');
+    const finish = () => {
       dialog.close();
       setMounted(false);
+    };
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      finish();
       return;
     }
-    setClosing(true);
-    const t = setTimeout(() => {
-      dialog.close();
-      setClosing(false);
-      setMounted(false);
-      if (panelRef.current) {
-        panelRef.current.style.transform = '';
-        panelRef.current.style.transition = '';
-      }
-    }, 240);
+    const t = setTimeout(finish, 330);
     return () => clearTimeout(t);
   }, [open]);
 
@@ -80,19 +83,18 @@ export function Sheet({
   const onDragMove = (e: React.PointerEvent) => {
     if (!drag.current || !panelRef.current) return;
     drag.current.dy = Math.max(0, e.clientY - drag.current.startY);
-    panelRef.current.style.transform = `translateY(${drag.current.dy}px)`;
+    panelRef.current.style.transform = `translate3d(0, ${drag.current.dy}px, 0)`;
   };
   const onDragEnd = () => {
     const d = drag.current;
     drag.current = null;
     const panel = panelRef.current;
     if (!d || !panel) return;
-    if (d.dy > 90) {
-      onClose();
-    } else {
-      panel.style.transition = 'transform 200ms cubic-bezier(0.32, 0.72, 0, 1)';
-      panel.style.transform = '';
-    }
+    // Hand control back to the stylesheet transition: it glides back up, or
+    // continues down from where the finger left it when closing.
+    panel.style.transition = '';
+    panel.style.transform = '';
+    if (d.dy > 90) onClose();
   };
 
   const widths = { sm: 'sm:max-w-md', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' };
@@ -101,7 +103,7 @@ export function Sheet({
     <dialog
       ref={ref}
       className="sheet"
-      data-closing={closing || undefined}
+      data-state={state}
       aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();
@@ -114,6 +116,7 @@ export function Sheet({
         if (e.target === ref.current) onClose();
       }}
     >
+      <div className="sheet-overlay" aria-hidden onClick={onClose} />
       {(open || mounted) && (
         <div
           ref={panelRef}

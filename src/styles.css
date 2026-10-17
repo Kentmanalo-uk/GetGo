@@ -132,74 +132,61 @@ dialog.sheet[open] {
     padding: 1.5rem;
   }
 }
-/* A light blur behind sheets, without dimming the page. */
+/*
+ * Sheet motion. The panel is first painted in its closed position, then the
+ * component flips data-state to "open" on the next frames so a CSS
+ * transition plays; closing runs the same transition in reverse. A blur layer
+ * behind the panel (not ::backdrop, whose animation is unreliable) eases its
+ * blur radius in and out without dimming the page.
+ */
 dialog.sheet::backdrop {
   background: transparent;
+}
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  -webkit-backdrop-filter: blur(0);
+  backdrop-filter: blur(0);
+  transition:
+    backdrop-filter 300ms ease,
+    -webkit-backdrop-filter 300ms ease;
+}
+dialog.sheet[data-state='open'] .sheet-overlay {
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 }
+.sheet-panel {
+  position: relative;
+  transform: translate3d(0, 100%, 0);
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+dialog.sheet[data-state='open'] .sheet-panel {
+  transform: translate3d(0, 0, 0);
+}
+@media (min-width: 640px) {
+  .sheet-panel {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.97);
+    transition:
+      transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 220ms ease;
+  }
+  dialog.sheet[data-state='open'] .sheet-panel {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-panel,
+  .sheet-overlay {
+    transition: none;
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
-  /* Phones: the sheet slides up and back down; opening mirrors closing (same length, reversed curve). */
-  dialog.sheet[open] .sheet-panel {
-    animation: sheet-in 240ms cubic-bezier(0, 0, 0.6, 1) both;
-    will-change: transform;
-    backface-visibility: hidden;
-  }
-  dialog.sheet[open]::backdrop {
-    animation: backdrop-in 240ms ease-out both;
-  }
-  dialog.sheet[open][data-closing] .sheet-panel {
-    animation: sheet-out 240ms cubic-bezier(0.4, 0, 1, 1) both;
-  }
-  dialog.sheet[open][data-closing]::backdrop {
-    animation: backdrop-out 240ms ease-in both;
-  }
-  /* Larger screens: a centered dialog that gently scales and fades. */
-  @media (min-width: 640px) {
-    dialog.sheet[open] .sheet-panel {
-      animation: dialog-in 160ms ease-out both;
-    }
-    dialog.sheet[open][data-closing] .sheet-panel {
-      animation: dialog-out 160ms ease-in both;
-    }
-  }
   .skeleton {
     animation: pulse 1.4s ease-in-out infinite;
-  }
-}
-@keyframes sheet-in {
-  from {
-    transform: translateY(100%);
-  }
-}
-@keyframes sheet-out {
-  to {
-    transform: translateY(100%);
-  }
-}
-@keyframes dialog-in {
-  from {
-    transform: translateY(8px) scale(0.97);
-    opacity: 0;
-  }
-}
-@keyframes dialog-out {
-  to {
-    transform: translateY(8px) scale(0.97);
-    opacity: 0;
-  }
-}
-/* The blur itself eases in and out (fading a blurred layer would ghost the page). */
-@keyframes backdrop-in {
-  from {
-    -webkit-backdrop-filter: blur(0);
-    backdrop-filter: blur(0);
-  }
-}
-@keyframes backdrop-out {
-  to {
-    -webkit-backdrop-filter: blur(0);
-    backdrop-filter: blur(0);
   }
 }
 @keyframes pulse {

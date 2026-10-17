@@ -70,7 +70,7 @@ export function AddressSheet({ open, onClose }: { open: boolean; onClose: () => 
               {status === 'signed_in' ? 'Or browse an area' : 'Choose your area'}
             </h3>
             {!loc.ready ? (
-              <Skeleton className="my-2 h-12" />
+              <Skeleton className="my-2.5 h-14" />
             ) : loc.areas.length === 0 ? (
               <p className="py-3 text-ink-3">GETGO isn’t operating in any area yet.</p>
             ) : (
