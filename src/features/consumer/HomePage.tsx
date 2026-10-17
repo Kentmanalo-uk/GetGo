@@ -68,85 +68,48 @@ function greeting(now = new Date()) {
 }
 
 /**
- * Desktop-only welcome: a headline with search, and the four services as
- * large cards (phones use the compact shortcut row instead).
+ * Desktop-only welcome: a short greeting and the four services as icons in a
+ * line-separated row. Phones use the compact shortcut row instead; search
+ * lives in the desktop header.
  */
 function DesktopHero({ onFilter }: { onFilter: (f: Filter) => void }) {
   const { profile } = useAuth();
   const { area } = useLocationContext();
   const navigate = useNavigate();
-  const [q, setQ] = useState('');
   const toStores = (f: Filter) => {
     onFilter(f);
     document.getElementById('stores-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   const services = [
-    { key: 'food', label: 'Food', hint: 'Meals and snacks from kitchens near you', icon: UtensilsCrossed, available: true, go: () => toStores('food') },
-    { key: 'shops', label: 'Shops', hint: 'Groceries, sari-sari and specialty stores', icon: ShoppingBasket, available: true, go: () => toStores('shops') },
-    { key: 'padala', label: 'Padala', hint: 'Send parcels and documents across town', icon: Package, available: area?.padala_enabled ?? true, go: () => navigate('/padala') },
-    { key: 'errands', label: 'Errands', hint: 'Buy things, pay bills or pick something up', icon: ListChecks, available: area?.errands_enabled ?? true, go: () => navigate('/errands') },
+    { key: 'food', label: 'Food', icon: UtensilsCrossed, available: true, go: () => toStores('food') },
+    { key: 'shops', label: 'Shops', icon: ShoppingBasket, available: true, go: () => toStores('shops') },
+    { key: 'padala', label: 'Padala', icon: Package, available: area?.padala_enabled ?? true, go: () => navigate('/padala') },
+    { key: 'errands', label: 'Errands', icon: ListChecks, available: area?.errands_enabled ?? true, go: () => navigate('/errands') },
   ];
   const firstName = profile?.full_name?.split(' ')[0];
   return (
-    <section
-      aria-labelledby="hero-heading"
-      className="hidden items-center gap-12 rounded-[1.75rem] bg-gradient-to-br from-accent-soft via-surface to-surface p-10 shadow-card lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] xl:p-12"
-    >
+    <section aria-labelledby="hero-heading" className="hidden items-center justify-between gap-10 border-b border-line pt-2 pb-10 lg:flex">
       <div>
         <p className="text-small font-semibold text-accent-ink">
           {greeting()}
           {firstName ? `, ${firstName}` : ''}
         </p>
-        <h2 id="hero-heading" className="mt-2 text-[2.75rem] leading-[1.08] font-extrabold tracking-tight">
+        <h2 id="hero-heading" className="mt-1 text-[2.5rem] leading-tight font-extrabold tracking-tight">
           What do you need today?
         </h2>
-        <p className="mt-3 max-w-md text-heading text-ink-2">
-          Local riders in {area?.name ?? 'your town'} buy, pick up and deliver for you — paid by GCash, straight to your rider.
-        </p>
-        <form
-          role="search"
-          className="mt-7 flex max-w-lg gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            navigate(`/search?q=${encodeURIComponent(q.trim())}`);
-          }}
-        >
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-3" aria-hidden />
-            <input
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search stores and dishes"
-              aria-label="Search stores and dishes"
-              className="h-12 w-full rounded-control border border-line bg-surface pr-3 pl-12 text-body shadow-sm focus:border-ink focus:ring-2 focus:ring-accent focus:outline-none"
-            />
-          </div>
-          <Button type="submit" size="lg">
-            Search
-          </Button>
-        </form>
       </div>
-      {/* A 2×2 set separated by thin lines (no cards). */}
-      <div className="grid grid-cols-2">
-        {services.map(({ key, label, hint, icon: Icon, available, go }, i) => (
+      <div className="flex divide-x divide-line">
+        {services.map(({ key, label, icon: Icon, available, go }) => (
           <button
             key={key}
             type="button"
             onClick={go}
             disabled={!available}
-            className={cx(
-              'group flex flex-col items-start border-line p-6 text-left transition-colors hover:bg-surface/70 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent',
-              i < 2 && 'border-b',
-              i % 2 === 0 && 'border-r',
-            )}
+            title={available ? undefined : 'Not available in your area yet'}
+            className="group flex w-28 flex-col items-center gap-2 py-1 disabled:cursor-not-allowed disabled:opacity-50 xl:w-32"
           >
-            <Icon className={cx('size-11 transition-transform group-hover:scale-105', ICON_GRADIENT)} weight="fill" aria-hidden />
-            <span className="mt-4 flex w-full items-center justify-between gap-2 text-heading font-bold">
-              {label}
-              <ArrowRight className="size-4 text-ink-4 transition-transform group-hover:translate-x-0.5 group-hover:text-ink" aria-hidden />
-            </span>
-            <span className="mt-0.5 text-small text-ink-3">{available ? hint : 'Not available in your area yet'}</span>
+            <Icon className={cx('size-11 transition-transform group-hover:scale-110 motion-reduce:transition-none', ICON_GRADIENT)} weight="fill" aria-hidden />
+            <span className="font-semibold group-hover:text-accent-ink">{label}</span>
           </button>
         ))}
       </div>
