@@ -15,6 +15,7 @@ import type { ServiceArea } from '@/types/models';
 import { useAllServiceAreas, useDeleteServiceArea, usePermissions, useSaveServiceArea } from './api';
 import { DataTable, ListSkeleton, RoleNote } from './ui';
 import { BarangayFeesEditor } from './BarangayFeesEditor';
+import { DeliveryPricingEditor } from './DeliveryPricingEditor';
 
 const peso = z
   .string()
@@ -194,7 +195,7 @@ function AreaForm({ area, onDone }: { area: ServiceArea | null; onDone: () => vo
       <fieldset className="space-y-4 border-t border-line pt-4">
         <legend className="sr-only">Padala and errands</legend>
         <p className="text-small text-ink-3">
-          Padala and errands charge the higher barangay price of the two stops, plus the service fee and the fee below.
+          Padala and errands charge delivery between the two stops (by km when both are pinned and the area prices by distance, otherwise the higher barangay price), plus the service fee and the fee below.
         </p>
         <Controller
           control={form.control}
@@ -277,6 +278,8 @@ export default function AreasPage() {
   const [editing, setEditing] = useState<ServiceArea | 'new' | null>(null);
   const [pricing, setPricing] = useState<ServiceArea | null>(null);
 
+  const deliveryLabel = (a: ServiceArea) =>
+    a.delivery_pricing === 'distance' ? `By km, from ${formatMoney(a.km_base_fee_minor)}` : `${formatMoney(a.delivery_fee_minor)} default`;
   const smallOrder = (a: ServiceArea) =>
     a.small_order_threshold_minor && a.small_order_fee_minor > 0
       ? `${formatMoney(a.small_order_fee_minor)} under ${formatMoney(a.small_order_threshold_minor)}`
@@ -319,7 +322,7 @@ export default function AreasPage() {
               ),
             },
             { header: 'Status', cell: (a) => <StatusText tone={a.is_active ? 'done' : 'muted'}>{a.is_active ? 'Open' : 'Off'}</StatusText> },
-            { header: 'Default delivery', align: 'right', cell: (a) => formatMoney(a.delivery_fee_minor) },
+            { header: 'Delivery', align: 'right', cell: (a) => deliveryLabel(a) },
             { header: 'Service fee', align: 'right', cell: (a) => formatMoney(a.service_fee_minor) },
             { header: 'Small-order fee', align: 'right', cell: smallOrder },
             { header: 'Typical time', align: 'right', cell: (a) => (a.typical_delivery_minutes ? `${a.typical_delivery_minutes} min` : '—') },
@@ -331,7 +334,7 @@ export default function AreasPage() {
                 perms.canConfigure ? (
                   <span className="flex justify-end gap-1">
                     <Button size="sm" variant="ghost" onClick={() => setPricing(a)}>
-                      Barangay prices
+                      Delivery pricing
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(a)}>
                       Edit
@@ -352,14 +355,14 @@ export default function AreasPage() {
                 <StatusText tone={a.is_active ? 'done' : 'muted'}>{a.is_active ? 'Open' : 'Off'}</StatusText>
               </div>
               <p className="tabular text-small text-ink-2">
-                Delivery {formatMoney(a.delivery_fee_minor)} · Service {formatMoney(a.service_fee_minor)} · Small order {smallOrder(a)}
+                Delivery {deliveryLabel(a)} · Service {formatMoney(a.service_fee_minor)} · Small order {smallOrder(a)}
                 {a.typical_delivery_minutes ? ` · ~${a.typical_delivery_minutes} min` : ''}
                 {` · Padala ${a.padala_enabled ? 'on' : 'off'} · Errands ${a.errands_enabled ? 'on' : 'off'}`}
               </p>
               {perms.canConfigure && (
                 <div className="flex gap-2">
                   <Button size="sm" variant="secondary" onClick={() => setPricing(a)}>
-                    Barangay prices
+                    Delivery pricing
                   </Button>
                   <Button size="sm" variant="secondary" onClick={() => setEditing(a)}>
                     Edit
@@ -375,8 +378,17 @@ export default function AreasPage() {
         {editing !== null && <AreaForm key={editing === 'new' ? 'new' : editing.id} area={editing === 'new' ? null : editing} onDone={() => setEditing(null)} />}
       </Sheet>
 
-      <Sheet open={pricing !== null} onClose={() => setPricing(null)} title={pricing ? `Delivery prices in ${pricing.name}` : ''} size="lg">
-        {pricing && <BarangayFeesEditor key={pricing.id} area={pricing} onDone={() => setPricing(null)} />}
+      <Sheet open={pricing !== null} onClose={() => setPricing(null)} title={pricing ? `Delivery pricing in ${pricing.name}` : ''} size="lg">
+        {pricing && (
+          <div className="space-y-8">
+            <DeliveryPricingEditor key={`km-${pricing.id}`} area={pricing} />
+            <section className="space-y-3 border-t border-line pt-6">
+              <h3 className="text-heading font-semibold">Barangay prices</h3>
+              <p className="text-small text-ink-3">Used in barangay pricing, and in km pricing for trips without both pins.</p>
+              <BarangayFeesEditor key={pricing.id} area={pricing} onDone={() => setPricing(null)} />
+            </section>
+          </div>
+        )}
       </Sheet>
     </div>
   );

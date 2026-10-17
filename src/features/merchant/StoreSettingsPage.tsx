@@ -17,6 +17,7 @@ import { userMessage } from '@/lib/errors';
 import { CATEGORY_LABELS, type Merchant } from '@/types/models';
 import { useMerchantContext } from './MerchantLayout';
 import { StoreStatusControl } from './StoreStatusControl';
+import { StoreLocation } from './StoreLocation';
 import { useHourExceptions, useMerchant, useReplaceHours, useSetPublished, useStoreHoursAdmin, useUpdateMerchant } from './api';
 
 const profileSchema = z.object({
@@ -262,6 +263,7 @@ export default function StoreSettingsPage() {
             <DataRow label="Minimum order">{m.min_order_minor ? formatMoney(m.min_order_minor) : 'None'}</DataRow>
           </dl>
           <p className="text-small text-ink-3">To change your category or address, contact GETGO support.</p>
+          <StoreLocation merchant={m} readOnly={!canManage} />
         </section>
       </div>
 

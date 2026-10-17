@@ -95,6 +95,8 @@ export interface AdminMerchant {
   application_id: string | null;
   /** Owner email for an admin-created store whose owner hasn't signed up yet. */
   pending_owner_email?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   created_at: string;
 }
 
@@ -281,7 +283,7 @@ export function useAllServiceAreas() {
   });
 }
 
-export type ServiceAreaInput = Omit<ServiceArea, 'id'>;
+export type ServiceAreaInput = Partial<Omit<ServiceArea, 'id'>>;
 
 export function useSaveServiceArea() {
   const invalidate = useInvalidate();

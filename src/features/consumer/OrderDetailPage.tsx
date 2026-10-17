@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { TripMap } from '@/components/map';
+import { pinOf } from '@/lib/geo';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { Check, Copy, Star } from '@/components/icons';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -400,6 +402,11 @@ export default function OrderDetailPage() {
               )}
             </p>
             {order.notes && <p className="mt-2 text-ink-3">Note: {order.notes}</p>}
+            {pinOf(order.pickup_address) && pinOf(order.delivery_address) && (
+              <div className="mt-3">
+                <TripMap from={pinOf(order.pickup_address)!} to={pinOf(order.delivery_address)!} km={order.distance_km} />
+              </div>
+            )}
           </section>
           <section>
             <h2 className="mb-1 font-semibold">Payment</h2>

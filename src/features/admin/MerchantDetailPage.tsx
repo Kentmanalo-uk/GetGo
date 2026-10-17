@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/Toast';
 import { formatMoney } from '@/domain/money';
 import { summarizeHours, trimSeconds } from '@/domain/hours';
 import { CATEGORY_LABELS } from '@/types/models';
+import { StoreLocation } from '@/features/merchant/StoreLocation';
 import { personLabel, useMerchant, useMerchantRecentOrders, usePermissions, useSetMerchantStatus, type MerchantStatus } from './api';
 import { DataTable, Detail, MERCHANT_STATUS_LABELS, ORDER_STATUS_LABELS, RoleNote, merchantTone, orderTone } from './ui';
 
@@ -163,6 +164,11 @@ export default function MerchantDetailPage() {
                 </Detail>
               )}
             </dl>
+          </section>
+
+          <section>
+            <SectionHeading title="Location" />
+            <StoreLocation merchant={m} readOnly={!perms.canConfigure} />
           </section>
 
           <section>

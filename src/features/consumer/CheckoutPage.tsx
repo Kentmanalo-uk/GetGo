@@ -13,9 +13,11 @@ import { formatMoney } from '@/domain/money';
 import { errorHint, userMessage } from '@/lib/errors';
 import { newIdempotencyKey } from '@/lib/queryClient';
 import type { QuoteItem } from '@/types/models';
-import { usePlaceOrder, useProduct, useQuote, useSetCartQuantity, useStorefront } from './api';
+import { usePlaceOrder, useProduct, useQuote, useServiceAreas, useSetCartQuantity, useStorefront } from './api';
 import { AddressForm } from './AddressForm';
 import { NoRidersNotice, useNoRidersOnline } from '@/features/riders/RidersOnline';
+import { TripMap } from '@/components/map';
+import { formatKm, pinOf } from '@/lib/geo';
 import { ProductSheet, type EditingLine } from './ProductSheet';
 
 function keyFor(merchantId: string) {
@@ -90,7 +92,7 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState('');
   const [promoInput, setPromoInput] = useState('');
   const [promo, setPromo] = useState<string | null>(null);
-  const [addressSheet, setAddressSheet] = useState<'pick' | 'new' | null>(null);
+  const [addressSheet, setAddressSheet] = useState<'pick' | 'new' | 'edit' | null>(null);
   const [editing, setEditing] = useState<QuoteItem | null>(null);
   const idempotencyKey = useMemo(() => (merchantId ? keyFor(merchantId) : ''), [merchantId]);
 
@@ -105,6 +107,7 @@ export default function CheckoutPage() {
   const q = quote.data;
   const qc = useQueryClient();
   const noRiders = useNoRidersOnline(q?.merchant.service_area_id);
+  const areas = useServiceAreas();
 
   if (quote.isPending) {
     return (
@@ -126,6 +129,11 @@ export default function CheckoutPage() {
   }
 
   const address = loc.addresses.find((a) => a.id === addressId) ?? null;
+  const area = areas.data?.find((a) => a.id === q.merchant.service_area_id);
+  const storePin = pinOf(storefront.data);
+  const addressPin = pinOf(address);
+  // In km-priced areas, an unpinned address pays the barangay price; invite a pin.
+  const askForPin = area?.delivery_pricing === 'distance' && storePin && address && !addressPin;
 
   const placeOrder = async () => {
     if (!addressId) return;
@@ -182,6 +190,20 @@ export default function CheckoutPage() {
               <Button variant="secondary" icon={<Plus className="size-4" aria-hidden />} onClick={() => setAddressSheet('new')}>
                 Add a delivery address
               </Button>
+            )}
+            {storePin && addressPin && <TripMap from={storePin} to={addressPin} km={q.distance_km} className="mt-3" />}
+            {askForPin && (
+              <Notice
+                className="mt-3"
+                title="Pin your address for a fee by distance"
+                action={
+                  <Button size="sm" variant="secondary" onClick={() => setAddressSheet('edit')}>
+                    Pin on map
+                  </Button>
+                }
+              >
+                Delivery here is priced by km. Without a pin, the barangay price applies.
+              </Notice>
             )}
           </section>
 
@@ -262,7 +284,9 @@ export default function CheckoutPage() {
             </h2>
             <dl className="text-small">
               <DataRow label="Items (store prices)">{formatMoney(q.subtotal_minor)}</DataRow>
-              <DataRow label="Delivery fee">{formatMoney(q.delivery_fee_minor)}</DataRow>
+              <DataRow label={q.delivery_basis === 'distance' && q.distance_km != null ? `Delivery fee · ${formatKm(q.distance_km)}` : 'Delivery fee'}>
+                {formatMoney(q.delivery_fee_minor)}
+              </DataRow>
               {q.service_fee_minor > 0 && <DataRow label="Service fee">{formatMoney(q.service_fee_minor)}</DataRow>}
               {q.small_order_fee_minor > 0 && <DataRow label="Small order fee">{formatMoney(q.small_order_fee_minor)}</DataRow>}
               {q.discount_minor > 0 && (
@@ -299,8 +323,14 @@ export default function CheckoutPage() {
         </aside>
       </div>
 
-      <Sheet open={addressSheet !== null} onClose={() => setAddressSheet(null)} title={addressSheet === 'new' ? 'New address' : 'Deliver to'}>
-        {addressSheet === 'new' ? (
+      <Sheet
+        open={addressSheet !== null}
+        onClose={() => setAddressSheet(null)}
+        title={addressSheet === 'new' ? 'New address' : addressSheet === 'edit' ? 'Edit address' : 'Deliver to'}
+      >
+        {addressSheet === 'edit' && address ? (
+          <AddressForm address={address} onSaved={() => setAddressSheet(null)} onCancel={() => setAddressSheet(null)} />
+        ) : addressSheet === 'new' ? (
           <AddressForm
             onSaved={(a) => {
               setAddressId(a.id);

@@ -9,6 +9,8 @@ import { formatMoney } from '@/domain/money';
 import type { OrderStatus, Service } from '@/domain/orderStatus';
 import { ERRAND_TYPES, PARCEL_SIZES, type ErrandTask, type OrderWithItems, type PadalaTask } from '@/types/models';
 import { itemCount, riderEarning } from './api';
+import { TripMap } from '@/components/map';
+import { directionsUrl, formatKm, pinOf } from '@/lib/geo';
 
 function mapsUrl(parts: Array<string | null | undefined>) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.filter(Boolean).join(', '))}`;
@@ -122,59 +124,71 @@ export function Route({ order, showCustomer }: { order: OrderWithItems; showCust
   const showPickup = order.service !== 'padala' || showCustomer;
   const pickupLabel = order.service === 'padala' ? 'Pick up from' : order.service === 'errand' ? 'Go to' : 'Buy at';
   const pickupTitle = isStore ? order.merchant_name : showPickup ? (pickup.name ?? '') : `Brgy. ${pickup.barangay}`;
+  const from = pinOf(pickup);
+  const to = pinOf(addr);
+  // Exact pins are private until the customer pays, like the full address.
+  const pickupPin = showPickup ? from : null;
+  const dropPin = showCustomer ? to : null;
   return (
-    <div className="relative space-y-5">
-      <span aria-hidden className="absolute top-9 bottom-9 left-[17px] w-0.5 bg-line" />
-      <Stop
-        icon={order.service === 'padala' ? <Package className="size-4" weight="fill" /> : order.service === 'errand' ? <ListChecks className="size-4" weight="fill" /> : <Store className="size-4" weight="fill" />}
-        label={pickupLabel}
-        title={pickupTitle}
-        actions={
-          showPickup && (
-            <>
-              <a className={chip} href={mapsUrl([isStore ? order.merchant_name : null, pickup.line1, pickup.barangay, pickup.city])} target="_blank" rel="noreferrer">
-                <Navigation className="size-4" aria-hidden /> Directions
-              </a>
-              {pickup.phone && (
-                <a className={chip} href={`tel:${pickup.phone}`}>
-                  <Phone className="size-4" aria-hidden /> {isStore ? 'Call store' : pickup.phone}
+    <div className="space-y-5">
+      {showCustomer && showPickup && from && to ? (
+        <TripMap from={from} to={to} km={order.distance_km} />
+      ) : (
+        order.distance_km != null && <p className="text-small text-ink-3">About {formatKm(order.distance_km)} by road from pickup to drop-off.</p>
+      )}
+      <div className="relative space-y-5">
+        <span aria-hidden className="absolute top-9 bottom-9 left-[17px] w-0.5 bg-line" />
+        <Stop
+          icon={order.service === 'padala' ? <Package className="size-4" weight="fill" /> : order.service === 'errand' ? <ListChecks className="size-4" weight="fill" /> : <Store className="size-4" weight="fill" />}
+          label={pickupLabel}
+          title={pickupTitle}
+          actions={
+            showPickup && (
+              <>
+                <a className={chip} href={pickupPin ? directionsUrl(pickupPin) : mapsUrl([isStore ? order.merchant_name : null, pickup.line1, pickup.barangay, pickup.city])} target="_blank" rel="noreferrer">
+                  <Navigation className="size-4" aria-hidden /> Directions
                 </a>
-              )}
-              {pickup.phone && order.service === 'padala' && (
-                <a className={chip} href={smsLink(pickup.phone, `Hi, this is your GETGO rider for padala ${order.code}.`)}>
+                {pickup.phone && (
+                  <a className={chip} href={`tel:${pickup.phone}`}>
+                    <Phone className="size-4" aria-hidden /> {isStore ? 'Call store' : pickup.phone}
+                  </a>
+                )}
+                {pickup.phone && order.service === 'padala' && (
+                  <a className={chip} href={smsLink(pickup.phone, `Hi, this is your GETGO rider for padala ${order.code}.`)}>
+                    <ChatText className="size-4" aria-hidden /> Message
+                  </a>
+                )}
+              </>
+            )
+          }
+        >
+          {showPickup ? `${pickup.line1}, ${pickup.barangay}, ${pickup.city}` : `${pickup.city} · full address after payment`}
+          {showPickup && !isStore && pickup.landmark && <span className="block text-ink-3">Landmark: {pickup.landmark}</span>}
+        </Stop>
+        <Stop
+          icon={<MapPin className="size-4" weight="fill" />}
+          label="Deliver to"
+          title={showCustomer ? addr.recipient_name : `Brgy. ${addr.barangay}`}
+          actions={
+            showCustomer && (
+              <>
+                <a className={chip} href={dropPin ? directionsUrl(dropPin, pickupPin) : mapsUrl([addr.line1, addr.barangay, addr.city])} target="_blank" rel="noreferrer">
+                  <Navigation className="size-4" aria-hidden /> Directions
+                </a>
+                <a className={chip} href={`tel:${addr.phone}`}>
+                  <Phone className="size-4" aria-hidden /> {addr.phone}
+                </a>
+                <a className={chip} href={smsLink(addr.phone, `Hi, this is your GETGO rider for order ${order.code}.`)}>
                   <ChatText className="size-4" aria-hidden /> Message
                 </a>
-              )}
-            </>
-          )
-        }
-      >
-        {showPickup ? `${pickup.line1}, ${pickup.barangay}, ${pickup.city}` : `${pickup.city} · full address after payment`}
-        {showPickup && !isStore && pickup.landmark && <span className="block text-ink-3">Landmark: {pickup.landmark}</span>}
-      </Stop>
-      <Stop
-        icon={<MapPin className="size-4" weight="fill" />}
-        label="Deliver to"
-        title={showCustomer ? addr.recipient_name : `Brgy. ${addr.barangay}`}
-        actions={
-          showCustomer && (
-            <>
-              <a className={chip} href={mapsUrl([addr.line1, addr.barangay, addr.city])} target="_blank" rel="noreferrer">
-                <Navigation className="size-4" aria-hidden /> Directions
-              </a>
-              <a className={chip} href={`tel:${addr.phone}`}>
-                <Phone className="size-4" aria-hidden /> {addr.phone}
-              </a>
-              <a className={chip} href={smsLink(addr.phone, `Hi, this is your GETGO rider for order ${order.code}.`)}>
-                <ChatText className="size-4" aria-hidden /> Message
-              </a>
-            </>
-          )
-        }
-      >
-        {showCustomer ? `${addr.line1}, ${addr.barangay}, ${addr.city}` : `${addr.city} · full address after payment`}
-        {showCustomer && addr.landmark && <span className="block text-ink-3">Landmark: {addr.landmark}</span>}
-      </Stop>
+              </>
+            )
+          }
+        >
+          {showCustomer ? `${addr.line1}, ${addr.barangay}, ${addr.city}` : `${addr.city} · full address after payment`}
+          {showCustomer && addr.landmark && <span className="block text-ink-3">Landmark: {addr.landmark}</span>}
+        </Stop>
+      </div>
     </div>
   );
 }
@@ -235,6 +249,7 @@ export function OrderCard({ order, to, showStatus }: { order: OrderWithItems; to
             {order.service === 'pabili'
               ? `To Brgy. ${order.delivery_address.barangay}`
               : `Brgy. ${order.pickup_address.barangay} → Brgy. ${order.delivery_address.barangay}`}
+            {order.distance_km != null && <span className="shrink-0 text-ink-3"> · {formatKm(order.distance_km)}</span>}
           </p>
         </div>
         <div className="shrink-0 text-right">

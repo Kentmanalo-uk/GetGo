@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/Button';
 import { Checkbox, Field, Input, Select } from '@/components/ui/Field';
 import { FormError, Notice } from '@/components/ui/Feedback';
 import { BarangayField } from '@/components/BarangayField';
+import { PinField } from '@/components/map';
+import { areaCenter, pinOf } from '@/lib/geo';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useSaveAddress, useServiceAreas } from './api';
 import type { Address } from '@/types/models';
@@ -24,6 +26,8 @@ const schema = z.object({
   landmark: z.string().trim().max(200).optional(),
   service_area_id: z.string().uuid('Choose your town.'),
   is_default: z.boolean().optional(),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
 });
 
 type FormIn = z.input<typeof schema>;
@@ -41,7 +45,7 @@ export function AddressForm({ address, onSaved, onCancel }: { address?: Address;
   const form = useForm<FormIn, unknown, FormOut>({
     resolver: zodResolver(schema),
     defaultValues: address
-      ? { ...address, landmark: address.landmark ?? '', barangay_code: address.barangay_code ?? null }
+      ? { ...address, landmark: address.landmark ?? '', barangay_code: address.barangay_code ?? null, lat: address.lat ?? null, lng: address.lng ?? null }
       : {
           label: 'Home',
           recipient_name: profile?.full_name ?? '',
@@ -53,6 +57,8 @@ export function AddressForm({ address, onSaved, onCancel }: { address?: Address;
           landmark: '',
           service_area_id: onlyArea?.id ?? '',
           is_default: true,
+          lat: null,
+          lng: null,
         },
   });
   const errors = form.formState.errors;
@@ -119,6 +125,14 @@ export function AddressForm({ address, onSaved, onCancel }: { address?: Address;
       <Field label="Landmark or directions" optional error={errors.landmark?.message}>
         {(p) => <Input {...p} placeholder="Green gate beside the sari-sari store" {...form.register('landmark')} />}
       </Field>
+      <PinField
+        value={pinOf({ lat: form.watch('lat'), lng: form.watch('lng') })}
+        center={areaCenter(area)}
+        onChange={(pin) => {
+          form.setValue('lat', pin?.lat ?? null);
+          form.setValue('lng', pin?.lng ?? null);
+        }}
+      />
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Label" hint="Home, Work…" error={errors.label?.message}>
           {(p) => <Input {...p} {...form.register('label')} />}

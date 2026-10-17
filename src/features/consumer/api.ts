@@ -256,7 +256,11 @@ export function useSaveAddress() {
         : supabase.from('addresses').insert(input).select().single();
       return unwrap(await query) as Address;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['addresses', userId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['addresses', userId] });
+      // A moved pin can change the delivery fee.
+      qc.invalidateQueries({ queryKey: ['quote'] });
+    },
   });
 }
 

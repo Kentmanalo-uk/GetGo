@@ -5,6 +5,8 @@ import { Link, useNavigate } from 'react-router';
 import { z } from 'zod';
 import { Check, ListChecks, MapPin, Package } from '@/components/icons';
 import { BarangayField } from '@/components/BarangayField';
+import { PinField, TripMap } from '@/components/map';
+import { areaCenter, formatKm, pinOf } from '@/lib/geo';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, Notice, PageLoading } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
@@ -33,6 +35,8 @@ const placeSchema = (phoneRequired: boolean) =>
     barangay: z.string().trim().min(2, 'Choose the barangay.').max(80),
     barangay_code: z.string().nullable(),
     landmark: z.string().trim().max(200),
+    lat: z.number().nullable().optional(),
+    lng: z.number().nullable().optional(),
   });
 
 type Errors = Record<string, string>;
@@ -45,10 +49,19 @@ function collectErrors(result: { success: true } | { success: false; error: z.Zo
   }
 }
 
-const emptyPlace: ServicePlace = { name: '', phone: '', line1: '', barangay: '', barangay_code: null, landmark: '' };
+const emptyPlace: ServicePlace = { name: '', phone: '', line1: '', barangay: '', barangay_code: null, landmark: '', lat: null, lng: null };
 
 function fromAddress(a: Address): ServicePlace {
-  return { name: a.recipient_name, phone: a.phone, line1: a.line1, barangay: a.barangay, barangay_code: a.barangay_code, landmark: a.landmark ?? '' };
+  return {
+    name: a.recipient_name,
+    phone: a.phone,
+    line1: a.line1,
+    barangay: a.barangay,
+    barangay_code: a.barangay_code,
+    landmark: a.landmark ?? '',
+    lat: a.lat,
+    lng: a.lng,
+  };
 }
 
 /** Waits until the value stops changing, so the price isn't fetched on every keystroke. */
@@ -154,6 +167,12 @@ function PlaceFields({
       <Field label="Landmark" optional error={err('landmark')}>
         {(p) => <Input {...p} value={value.landmark} placeholder="Near the chapel, blue gate…" onChange={(e) => set({ landmark: e.target.value })} maxLength={200} />}
       </Field>
+      <PinField
+        value={pinOf(value)}
+        center={pinOf(value) ?? areaCenter(area)}
+        hint="Pin it so the rider finds the spot. With both stops pinned, the fee is by distance."
+        onChange={(pin) => set({ lat: pin?.lat ?? null, lng: pin?.lng ?? null })}
+      />
     </>
   );
 }
@@ -210,12 +229,15 @@ function Summary({
   };
 
   const total = q ? formatMoney(q.total_minor) : null;
+  const from = pinOf(req?.pickup);
+  const to = pinOf(req?.dropoff);
   const loading = Boolean(req) && (quote.isFetching || !q) && !quote.isError;
 
   return (
     <aside className="space-y-4 lg:sticky lg:top-24">
       <div className="rounded-sheet border border-line p-5">
         <h2 className="text-heading font-semibold">Summary</h2>
+        {from && to && <TripMap from={from} to={to} km={q?.distance_km} className="mt-3 h-44" />}
         {req && quote.isError ? (
           <Notice tone="danger" className="mt-3">
             {userMessage(quote.error)}
@@ -223,7 +245,9 @@ function Summary({
         ) : q ? (
           <dl className="mt-2 text-small">
             {service === 'errand' && <DataRow label="Budget for the errand">{formatMoney(q.subtotal_minor)}</DataRow>}
-            <DataRow label="Delivery fee">{formatMoney(q.delivery_fee_minor)}</DataRow>
+            <DataRow label={q.delivery_basis === 'distance' && q.distance_km != null ? `Delivery fee · ${formatKm(q.distance_km)}` : 'Delivery fee'}>
+              {formatMoney(q.delivery_fee_minor)}
+            </DataRow>
             <DataRow label={feeLabel}>{formatMoney(q.service_fee_minor)}</DataRow>
             <DataRow label="Total" strong className="mt-1 border-t border-line pt-2">
               {total}

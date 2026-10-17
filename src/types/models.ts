@@ -49,6 +49,15 @@ export interface ServiceArea {
   padala_fee_minor: number;
   errand_fee_minor: number;
   errand_max_budget_minor: number;
+  /** 'barangay': price per barangay. 'distance': by km between the two pins (when both are pinned). */
+  delivery_pricing: 'barangay' | 'distance';
+  km_base_fee_minor: number;
+  km_base_km: number;
+  km_rate_minor: number;
+  km_max_fee_minor: number | null;
+  /** Where maps start when pinning a location in this area. */
+  center_lat: number | null;
+  center_lng: number | null;
 }
 
 export interface Address {
@@ -63,6 +72,9 @@ export interface Address {
   service_area_id: string;
   is_default: boolean;
   barangay_code: string | null;
+  /** Map pin, for km-based delivery fees and so riders find the exact spot. */
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface Storefront {
@@ -90,6 +102,9 @@ export interface Storefront {
   rating_count: number;
   /** Lowest delivery fee in the store's area (barangay prices can differ). */
   delivery_fee_from_minor: number;
+  /** The store's map pin. */
+  lat: number | null;
+  lng: number | null;
   delivery_fee_varies: boolean;
 }
 
@@ -111,6 +126,9 @@ export interface Merchant {
   accepting_orders: boolean;
   paused_until: string | null;
   min_order_minor: number;
+  /** Store pin on the map. */
+  lat: number | null;
+  lng: number | null;
   created_at: string;
 }
 
@@ -197,6 +215,10 @@ export interface Quote {
   items: QuoteItem[];
   subtotal_minor: number;
   delivery_fee_minor: number;
+  /** Road distance from the store to the address, when both are pinned. */
+  distance_km: number | null;
+  /** How the delivery fee was priced. */
+  delivery_basis: 'distance' | 'barangay';
   service_fee_minor: number;
   small_order_fee_minor: number;
   discount_minor: number;
@@ -236,6 +258,8 @@ export interface DeliveryAddressSnapshot {
   barangay: string;
   city: string;
   landmark: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface PadalaTask {
@@ -273,7 +297,16 @@ export interface Order {
   /** The store's name, or the request title ("Padala · Documents"). */
   merchant_name: string;
   /** The store; for padala the sender; for errands the place to go. */
-  pickup_address: { line1: string; barangay: string; city: string; phone: string | null; name?: string; landmark?: string | null };
+  pickup_address: {
+    line1: string;
+    barangay: string;
+    city: string;
+    phone: string | null;
+    name?: string;
+    landmark?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+  };
   task: PadalaTask | ErrandTask | null;
   /** Errands: what the rider spent out of the budget (subtotal). */
   spent_minor: number | null;
@@ -287,6 +320,8 @@ export interface Order {
   notes: string | null;
   subtotal_minor: number;
   delivery_fee_minor: number;
+  /** Road distance of the trip in km, when both ends were pinned. */
+  distance_km: number | null;
   service_fee_minor: number;
   small_order_fee_minor: number;
   discount_minor: number;

@@ -73,7 +73,7 @@ describe('padala and errands', () => {
 
   test('padala is priced by the farther barangay plus the area fees', async () => {
     const q = await quoteAs(customer, 'padala', padala);
-    expect(q).toEqual({ subtotal_minor: 0, delivery_fee_minor: 6000, service_fee_minor: 1000, total_minor: 7000 });
+    expect(q).toMatchObject({ subtotal_minor: 0, delivery_fee_minor: 6000, service_fee_minor: 1000, total_minor: 7000 });
 
     await db.as(world.admin, `update service_areas set padala_fee_minor = 1500 where id = $1`, [world.areaId]);
     expect((await quoteAs(customer, 'padala', padala)).total_minor).toBe(8500);
@@ -139,7 +139,7 @@ describe('padala and errands', () => {
   test('an errand carries a budget, and the rider records what was spent', async () => {
     const q = await quoteAs(customer, 'errand', errand);
     // Budget ₱500 + Anilao ₱30 vs default ₱49 → ₱49 + service ₱10 + errand fee ₱20.
-    expect(q).toEqual({ subtotal_minor: 50000, delivery_fee_minor: 4900, service_fee_minor: 3000, total_minor: 57900 });
+    expect(q).toMatchObject({ subtotal_minor: 50000, delivery_fee_minor: 4900, service_fee_minor: 3000, total_minor: 57900 });
 
     const id = await sendAs(customer, 'errand', errand);
     expect(await order(id)).toMatchObject({ service: 'errand', merchant_name: 'Errand · Buy something', subtotal_minor: 50000, spent_minor: null });

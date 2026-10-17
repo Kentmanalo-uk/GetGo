@@ -12,6 +12,9 @@ export interface ServicePlace {
   barangay: string;
   barangay_code: string | null;
   landmark: string;
+  /** Map pin, optional. With both stops pinned, km-priced areas charge by distance. */
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export type ServiceKind = 'padala' | 'errand';
@@ -29,6 +32,8 @@ export interface ServiceQuote {
   delivery_fee_minor: number;
   service_fee_minor: number;
   total_minor: number;
+  distance_km: number | null;
+  delivery_basis: 'distance' | 'barangay';
 }
 
 function args(req: ServiceRequest) {

@@ -23,6 +23,8 @@ export {
   CaretUpDownIcon as ChevronsUpDown,
   CheckCircleIcon as CheckCircle,
   CheckIcon as Check,
+  CrosshairIcon as LocateFixed,
+  PathIcon as RouteIcon,
   ClipboardTextIcon as ClipboardList,
   ClockIcon as Clock,
   CompassIcon as Compass,
