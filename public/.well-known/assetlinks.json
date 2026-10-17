@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "site.getandgo.app",
+      "sha256_cert_fingerprints": ["FF:6C:89:CC:28:F6:8A:D8:95:89:94:15:51:DD:F4:34:42:35:CA:11:BC:A2:14:FD:2D:49:D0:C6:5E:C1:D4:15"]
+    }
+  }
+]

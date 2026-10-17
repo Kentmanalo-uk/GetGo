@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The GO logo in white, inside the adaptive icon's safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:translateX="24" android:translateY="33.06" android:scaleX="0.06" android:scaleY="0.06">
+        <path android:fillColor="#FFFFFF" android:pathData="M523.6 651.3A349 349 0 1 1 698.1 349L593.1 349A244.1 244.1 0 1 0 471.1 560.4ZM476.4 46.8A349 349 0 1 1 301.9 349L406.9 349A244.1 244.1 0 1 0 528.9 137.7ZM322.8 277.3L633 277.3L633 416.1L308.4 416.1A349 349 0 0 1 306.8 290.8A16.2 16.2 0 0 1 322.8 277.3ZM679.2 235.8L820.9 344.8A19.7 19.7 0 0 1 820.1 376.6L591.8 533.8A19.1 19.1 0 0 1 561.9 518.1L561.9 468.5Z" />
+    </group>
+</vector>

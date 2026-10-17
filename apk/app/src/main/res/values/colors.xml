@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- GETGO pink (buttons, the GO box) and the site's white header. -->
+    <color name="brand_pink">#E0266F</color>
+    <color name="status_bar">#FFFFFF</color>
+    <color name="navigation_bar">#FFFFFF</color>
+    <color name="navigation_bar_divider">#E8E5EB</color>
+    <color name="splash_background">#E0266F</color>
+    <color name="ic_launcher_background">#E0266F</color>
+</resources>

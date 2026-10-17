@@ -1,0 +1,13 @@
+# Build output
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+!release/*.apk
+
+# Signing secrets: keep these safe and backed up, never commit them.
+*.jks
+*.keystore
+keystore.properties
