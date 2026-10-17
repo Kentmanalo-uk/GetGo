@@ -42,7 +42,7 @@ export function customerStatusLabel(status: OrderStatus, service: Service = 'pab
     case 'pending':
       return 'Finding a rider';
     case 'accepted':
-      return 'Send your GCash payment';
+      return 'Pay your rider';
     case 'payment_submitted':
       return 'Rider is checking your payment';
     case 'buying':

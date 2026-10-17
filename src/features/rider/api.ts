@@ -122,6 +122,11 @@ export function useConfirmPayment(orderId: string) {
   );
 }
 
+/** Allow or withdraw cash on delivery while waiting for the customer to pay. */
+export function useSetCod(orderId: string) {
+  return useRiderMutation((allowed: boolean) => supabase.rpc('rider_set_cod', { p_order_id: orderId, p_allowed: allowed }).then(unwrap));
+}
+
 export function useReleaseOrder(orderId: string) {
   return useRiderMutation((note: string) => supabase.rpc('rider_release_order', { p_order_id: orderId, p_note: note || null }).then(unwrap));
 }

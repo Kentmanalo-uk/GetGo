@@ -167,6 +167,10 @@ function PaymentPanel({ order, payments }: { order: AdminOrder; payments: Paymen
                 </p>
               )}
               <p className="flex justify-between gap-3">
+                <span className="text-ink-3">Method</span>
+                <span>{(p as { method?: string }).method === 'cod' ? 'Cash on delivery' : 'GCash'}</span>
+              </p>
+              <p className="flex justify-between gap-3">
                 <span className="text-ink-3">Reference</span>
                 <span className="font-mono break-all">{p.gcash_reference ?? '—'}</span>
               </p>

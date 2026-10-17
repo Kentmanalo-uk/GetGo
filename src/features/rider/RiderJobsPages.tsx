@@ -13,10 +13,10 @@ import { orderStatusLabel, riderNextStep, statusTone } from '@/domain/orderStatu
 import { formatMoney, parsePesos, toPesoInput } from '@/domain/money';
 import { userMessage } from '@/lib/errors';
 import type { OrderWithItems } from '@/types/models';
-import { Field, Input } from '@/components/ui/Field';
+import { Field, Input, Switch } from '@/components/ui/Field';
 import { TaskSummary } from '@/features/services/TaskSummary';
 import { useRecordSpent } from '@/features/services/api';
-import { riderEarning, useConfirmPayment, useJobs, useReleaseOrder, useRiderOrder, type Job } from './api';
+import { riderEarning, useConfirmPayment, useJobs, useReleaseOrder, useRiderOrder, useSetCod, type Job } from './api';
 import { JobProgress, MoneySplit, OrderCard, Route, ShoppingList } from './components';
 import { useRider } from './RiderLayout';
 
@@ -145,18 +145,47 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
   const { profile } = useRider();
   const toast = useToast();
   const confirm = useConfirmPayment(order.id);
+  const setCod = useSetCod(order.id);
   const payment = order.payments;
+  const cod = payment?.method === 'cod';
+  const codNote = cod && (
+    <p className="mt-3 rounded-control bg-surface px-3 py-2 text-small font-semibold">
+      Cash on delivery · collect {formatMoney(order.total_minor)} from the customer
+    </p>
+  );
 
   switch (order.status) {
     case 'accepted':
       return (
-        <section aria-label="Waiting for payment" className="rounded-sheet bg-canvas p-5">
+        <section aria-label="Waiting for payment" className="space-y-4 rounded-sheet bg-canvas p-5">
+          <div>
           <p className="text-small text-ink-3">Step 1 · Wait for payment</p>
-          <p className="mt-1 text-heading font-bold">The customer is sending {formatMoney(order.total_minor)} to your GCash</p>
+          <p className="mt-1 text-heading font-bold">
+            {order.cod_allowed
+              ? `The customer is choosing GCash or cash on delivery for ${formatMoney(order.total_minor)}`
+              : `The customer is sending ${formatMoney(order.total_minor)} to your GCash`}
+          </p>
           <p className="mt-2 text-small text-ink-2">
-            To {profile.gcash_number} ({profile.gcash_name}). Don’t buy anything until you confirm the payment here.
+            {order.cod_allowed
+              ? `GCash goes to ${profile.gcash_number} (${profile.gcash_name}). If they choose cash on delivery, the job starts right away.`
+              : `To ${profile.gcash_number} (${profile.gcash_name}). Don’t buy anything until you confirm the payment here.`}
           </p>
           {payment?.rejection_note && <p className="mt-2 text-small text-ink-3">You told them: “{payment.rejection_note}”</p>}
+          </div>
+          <div className="border-t border-line pt-3">
+            <Switch
+              checked={order.cod_allowed}
+              onChange={(v) => setCod.mutateAsync(v).then(() => toast(v ? 'Cash on delivery offered' : 'Cash on delivery withdrawn'), () => undefined)}
+              disabled={setCod.isPending}
+              label="Allow cash on delivery"
+              description={`You pay ${order.service === 'pabili' ? 'the store' : 'for the request'} with your own money and collect ${formatMoney(order.total_minor)} in cash when you deliver.`}
+            />
+            {setCod.error && (
+              <Notice tone="danger" className="mt-2">
+                {userMessage(setCod.error)}
+              </Notice>
+            )}
+          </div>
         </section>
       );
     case 'payment_submitted':
@@ -220,6 +249,7 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
             <p className="text-small text-accent-ink">Step 3 · Pick up</p>
             <p className="mt-1 text-heading font-bold">Get the parcel from {order.pickup_address.name}</p>
             <p className="mt-2 text-small text-ink-2">Check that it matches the description and is sealed. Don’t carry cash, valuables or anything illegal.</p>
+            {codNote}
           </section>
         );
       }
@@ -230,7 +260,10 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
             <p className="mt-1 text-heading font-bold">
               {order.subtotal_minor > 0 ? `Spend up to ${formatMoney(order.subtotal_minor)} at ${order.pickup_address.name}` : `Go to ${order.pickup_address.name}`}
             </p>
-            <p className="mt-2 text-small text-ink-2">Keep the receipt. Give the customer any unspent budget in cash when you deliver.</p>
+            <p className="mt-2 text-small text-ink-2">
+              {cod ? 'Keep the receipt. With cash on delivery, the customer pays for what you spent plus the fees.' : 'Keep the receipt. Give the customer any unspent budget in cash when you deliver.'}
+            </p>
+            {codNote}
           </section>
         );
       }
@@ -239,6 +272,7 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
           <p className="text-small text-accent-ink">Step 3 · Buy the items</p>
           <p className="mt-1 text-heading font-bold">Pay {formatMoney(order.subtotal_minor)} at {order.merchant_name}</p>
           <p className="mt-2 text-small text-ink-2">Tick each item as you get it. Follow the customer’s notes.</p>
+          {codNote}
         </section>
       );
     case 'out_for_delivery':
@@ -255,6 +289,7 @@ function StepPanel({ order, onNotReceived }: { order: OrderWithItems; onNotRecei
                 ? 'Call the recipient if you can’t find the address.'
                 : 'Call the customer if you can’t find the address.'}
           </p>
+          {codNote}
         </section>
       );
     case 'completed':
@@ -397,7 +432,7 @@ export function RiderJobPage() {
                       .then(() => toast(next.to === 'completed' ? 'Delivery completed' : 'On your way'), () => undefined)
                   }
                 >
-                  {next.label}
+                  {next.to === 'completed' && o.payments?.method === 'cod' ? 'Delivered — cash collected' : next.label}
                 </Button>
               )}
               {o.status === 'accepted' && (

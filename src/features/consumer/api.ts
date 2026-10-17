@@ -432,7 +432,7 @@ export function usePlaceOrder() {
 export const ORDER_SELECT =
   '*, order_items(id, product_id, product_name, variant_name, unit_price_minor, quantity, line_total_minor, instructions, product:products(image_path), ' +
   'order_item_options(id, group_name, option_name, price_delta_minor, quantity)), ' +
-  'payments(id, status, amount_minor, refunded_minor, payee_name, payee_number, gcash_reference, sender_name, submitted_at, confirmed_at, rejection_note), ' +
+  'payments(id, method, status, amount_minor, refunded_minor, payee_name, payee_number, gcash_reference, sender_name, submitted_at, confirmed_at, rejection_note), ' +
   'assignments(status, rider_id, rider:rider_profiles(full_name, phone, vehicle_type, plate_number))';
 
 export function useMyOrders(scope: 'active' | 'all' = 'all') {
@@ -495,6 +495,18 @@ export function useUpdateOrderStatus() {
       qc.invalidateQueries({ queryKey: ['order', input.orderId] });
       qc.invalidateQueries({ queryKey: ['orders'] });
       qc.invalidateQueries({ queryKey: ['rider'] });
+    },
+  });
+}
+
+/** Customer chooses to pay in cash on delivery (when the rider offered it). */
+export function useChooseCod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderId: string) => unwrap(await supabase.rpc('choose_cash_on_delivery', { p_order_id: orderId })),
+    onSuccess: (_d, orderId) => {
+      qc.invalidateQueries({ queryKey: ['order', orderId] });
+      qc.invalidateQueries({ queryKey: ['orders'] });
     },
   });
 }

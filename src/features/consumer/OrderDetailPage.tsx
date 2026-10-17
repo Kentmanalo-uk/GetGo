@@ -15,7 +15,7 @@ import { openGcash, platform } from '@/lib/deeplinks';
 // GCash's own icon (from gcash.com), used only to label the button that opens the GCash app.
 import gcashIcon from '@/assets/gcash-icon-white.svg';
 import type { OrderWithItems } from '@/types/models';
-import { useOrder, useOrderRealtime, useOrderReview, useSubmitGcashPayment, useSubmitReview, useUpdateOrderStatus } from './api';
+import { useChooseCod, useOrder, useOrderRealtime, useOrderReview, useSubmitGcashPayment, useSubmitReview, useUpdateOrderStatus } from './api';
 import { OrderItemsList, OrderTotals } from './OrderViews';
 import { TaskSummary, isServiceOrder } from '@/features/services/TaskSummary';
 import { OrderRiderCard, RateRider } from '@/features/riders/RiderViews';
@@ -103,10 +103,21 @@ function OpenGcashButton({ number }: { number: string }) {
 function GcashPayment({ order }: { order: OrderWithItems }) {
   const payment = order.payments;
   const submit = useSubmitGcashPayment();
+  const chooseCod = useChooseCod();
   const toast = useToast();
   const [reference, setReference] = useState('');
   const [sender, setSender] = useState('');
+  const [method, setMethod] = useState<'gcash' | 'cod'>('gcash');
   if (!payment) return null;
+
+  // Cash on delivery chosen: remind the customer to have the cash ready.
+  if (payment.method === 'cod' && !['completed', 'cancelled'].includes(order.status)) {
+    return (
+      <Notice tone="success" title={`Cash on delivery · have ${formatMoney(order.total_minor)} ready`}>
+        Pay your rider in cash when your order arrives. Your rider pays {order.service === 'pabili' ? 'the store' : 'for your request'} first.
+      </Notice>
+    );
+  }
 
   if (order.status === 'payment_submitted') {
     return (
@@ -122,8 +133,51 @@ function GcashPayment({ order }: { order: OrderWithItems }) {
   return (
     <section aria-labelledby="pay-heading" className="rounded-media border-2 border-accent p-4 sm:p-5">
       <h2 id="pay-heading" className="text-heading font-bold">
-        Send your payment by GCash
+        {order.cod_allowed ? 'How do you want to pay?' : 'Send your payment by GCash'}
       </h2>
+      {order.cod_allowed && (
+        <div role="radiogroup" aria-label="Payment method" className="mt-3 grid grid-cols-2 gap-2">
+          {(
+            [
+              ['gcash', 'GCash', 'Send now, before your rider buys'],
+              ['cod', 'Cash on delivery', 'Pay your rider when it arrives'],
+            ] as const
+          ).map(([value, label, hint]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={method === value}
+              onClick={() => setMethod(value)}
+              className={cx(
+                'rounded-media border p-3 text-left transition-colors',
+                method === value ? 'border-accent-strong bg-accent-soft/60 ring-1 ring-accent-strong' : 'border-line hover:border-line-strong',
+              )}
+            >
+              <span className="block font-semibold">{label}</span>
+              <span className="block text-small text-ink-3">{hint}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {method === 'cod' ? (
+        <div className="mt-4 space-y-3">
+          <p className="text-ink-2">
+            Pay <span className="font-semibold text-ink">{formatMoney(order.total_minor)}</span> in cash to your rider when your order arrives. Your rider
+            starts right away and pays {order.service === 'pabili' ? 'the store' : 'for your request'} first.
+          </p>
+          {chooseCod.error && <Notice tone="danger">{userMessage(chooseCod.error)}</Notice>}
+          <Button
+            size="lg"
+            block
+            loading={chooseCod.isPending}
+            onClick={() => chooseCod.mutateAsync(order.id).then(() => toast('Cash on delivery confirmed'), () => undefined)}
+          >
+            Use cash on delivery
+          </Button>
+        </div>
+      ) : (
+        <>
       <p className="mt-1 text-small text-ink-2">
         {order.service === 'padala'
           ? 'This pays for your padala. Your rider picks it up once the payment arrives.'
@@ -163,6 +217,8 @@ function GcashPayment({ order }: { order: OrderWithItems }) {
           I’ve sent {formatMoney(order.total_minor)}
         </Button>
       </form>
+        </>
+      )}
     </section>
   );
 }
@@ -347,7 +403,15 @@ export default function OrderDetailPage() {
           </section>
           <section>
             <h2 className="mb-1 font-semibold">Payment</h2>
-            <p className="text-ink-2">{paymentStatusLabel(order.payment_status)}</p>
+            <p className="text-ink-2">
+              {payment?.method === 'cod'
+                ? order.payment_status === 'paid'
+                  ? 'Paid in cash on delivery'
+                  : order.payment_status === 'cancelled'
+                    ? 'No payment'
+                    : 'Cash on delivery'
+                : paymentStatusLabel(order.payment_status)}
+            </p>
             {payment?.gcash_reference && <p className="font-mono text-ink-3">Ref {payment.gcash_reference}</p>}
           </section>
           <section>

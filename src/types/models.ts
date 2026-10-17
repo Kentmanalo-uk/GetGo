@@ -277,6 +277,8 @@ export interface Order {
   task: PadalaTask | ErrandTask | null;
   /** Errands: what the rider spent out of the budget (subtotal). */
   spent_minor: number | null;
+  /** The rider offered cash on delivery for this order. */
+  cod_allowed: boolean;
   status: OrderStatus;
   payment_status: PaymentStatus;
   customer_name: string;
@@ -301,6 +303,8 @@ export interface Order {
 
 export interface OrderPayment {
   id: string;
+  /** gcash: sent to the rider before buying; cod: paid in cash on delivery. */
+  method: 'gcash' | 'cod';
   status: PaymentStatus;
   amount_minor: number;
   refunded_minor: number;
