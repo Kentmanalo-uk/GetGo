@@ -1,20 +1,22 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Bell, Bike, ChevronRight, Download, FileText, LifeBuoy, LogOut, MapPin, Shield, Store, Trash2 } from '@/components/icons';
+import { Bell, Bike, Camera, ChevronRight, Download, FileText, LifeBuoy, LogOut, MapPin, Shield, Store, Trash2 } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { VerifyEmailBanner } from '@/features/auth/VerifyEmailBanner';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
-import { EmptyState, ErrorState, FormError, Notice, PageLoading } from '@/components/ui/Feedback';
+import { EmptyState, ErrorState, FormError, Notice, PageLoading, Spinner } from '@/components/ui/Feedback';
 import { PageHeader, timeAgo } from '@/components/ui/Display';
 import { ConfirmDialog, Sheet } from '@/components/ui/Sheet';
 import { cx } from '@/components/ui/cx';
 import { useToast } from '@/components/ui/Toast';
 import { supabase } from '@/lib/supabase';
+import { uploadMedia } from '@/lib/media';
+import { Avatar } from '@/components/Avatar';
 import { unwrap, userMessage } from '@/lib/errors';
 import { useMarkNotificationsRead, useNotifications } from '@/features/notifications/api';
 import type { Address } from '@/types/models';
@@ -33,6 +35,8 @@ const profileSchema = z.object({
 
 function ProfileForm({ onDone }: { onDone: () => void }) {
   const { profile, userId, refreshIdentity } = useAuth();
+  const removeAvatar = useSetAvatar();
+  const toast = useToast();
   const save = useMutation({
     mutationFn: async (values: z.output<typeof profileSchema>) => unwrap(await supabase.from('profiles').update(values).eq('id', userId!)),
     onSuccess: async () => {
@@ -56,7 +60,84 @@ function ProfileForm({ onDone }: { onDone: () => void }) {
       <Button type="submit" block loading={save.isPending}>
         Save
       </Button>
+      {profile?.avatar_path && (
+        <Button
+          variant="ghost"
+          block
+          loading={removeAvatar.isPending}
+          onClick={() => removeAvatar.mutateAsync(null).then(() => toast('Profile picture removed'), () => undefined)}
+        >
+          Remove profile picture
+        </Button>
+      )}
+      <FormError error={removeAvatar.error} />
     </form>
+  );
+}
+
+/** Replaces the profile picture, then deletes the old file. */
+function useSetAvatar() {
+  const { profile, userId, refreshIdentity } = useAuth();
+  return useMutation({
+    mutationFn: async (file: File | null) => {
+      const old = profile?.avatar_path ?? null;
+      const path = file ? await uploadMedia(`avatars/${userId}`, file, 512) : null;
+      unwrap(await supabase.from('profiles').update({ avatar_path: path }).eq('id', userId!));
+      if (old) await supabase.storage.from('media').remove([old]);
+    },
+    onSuccess: () => refreshIdentity(),
+  });
+}
+
+/** Name, email and number as a card, with the profile picture. */
+function ProfileCard({ onEdit }: { onEdit: () => void }) {
+  const { profile } = useAuth();
+  const setAvatar = useSetAvatar();
+  const toast = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
+  if (!profile) return null;
+  return (
+    <section aria-label="Your profile" className="mt-5 mb-6 rounded-sheet bg-surface p-5 shadow-card ring-1 ring-line/70 lg:mt-8">
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0">
+          <Avatar name={profile.full_name} path={profile.avatar_path} size="lg" />
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={setAvatar.isPending}
+            aria-label={profile.avatar_path ? 'Change profile picture' : 'Add profile picture'}
+            className="absolute -right-1 -bottom-1 inline-flex size-8 items-center justify-center rounded-full bg-ink text-white ring-[3px] ring-surface transition-colors hover:bg-ink-2"
+          >
+            {setAvatar.isPending ? <Spinner className="size-4" /> : <Camera className="size-4" weight="fill" aria-hidden />}
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (file) setAvatar.mutateAsync(file).then(() => toast('Profile picture updated'), () => undefined);
+            }}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-title font-bold">{profile.full_name ?? 'Your account'}</h1>
+          {profile.email && <p className="truncate text-small text-ink-3">{profile.email}</p>}
+          {profile.phone && <p className="tabular text-small text-ink-3">{profile.phone}</p>}
+        </div>
+        <Button variant="secondary" size="sm" className="shrink-0 self-start" onClick={onEdit}>
+          Edit
+        </Button>
+      </div>
+      {setAvatar.error && (
+        <Notice tone="danger" className="mt-4">
+          {userMessage(setAvatar.error)}
+        </Notice>
+      )}
+    </section>
   );
 }
 
@@ -127,9 +208,7 @@ export function AccountPage() {
   const p = auth.profile;
   return (
     <div className="page-x mx-auto max-w-3xl pb-10">
-      <PageHeader title={p.full_name ?? 'Account'} actions={<Button variant="secondary" size="sm" onClick={() => setEditing(true)}>Edit</Button>}>
-        {[p.email, p.phone].filter(Boolean).join(' · ')}
-      </PageHeader>
+      <ProfileCard onEdit={() => setEditing(true)} />
       <VerifyEmailBanner />
       {!p.phone && (
         <Notice tone="warning" className="mb-4" action={<Button size="sm" variant="dark" onClick={() => setEditing(true)}>Add</Button>}>

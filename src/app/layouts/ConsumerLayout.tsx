@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useMatches, useNavigate } from 'react-router';
 import { Bell, ChevronDown, Compass, Home, Receipt, Search, ShoppingBag, User } from '@/components/icons';
 import { Logo } from '@/components/Logo';
+import { Avatar } from '@/components/Avatar';
 import { cx } from '@/components/ui/cx';
 import { ICON_GRADIENT } from '@/components/IconGradient';
 import { ButtonLink } from '@/components/ui/Button';
@@ -76,7 +77,7 @@ function DesktopHeader() {
   const cartCount = useCartCount();
   const unread = useUnreadCount();
   const navClass = ({ isActive }: { isActive: boolean }) =>
-    cx('text-small font-semibold transition-colors', isActive ? 'text-ink' : 'text-ink-3 hover:text-ink');
+    cx('text-small font-semibold whitespace-nowrap transition-colors', isActive ? 'text-ink' : 'text-ink-3 hover:text-ink');
 
   return (
     <header className="sticky top-0 z-30 hidden border-b border-line bg-surface/95 backdrop-blur lg:block">
@@ -106,7 +107,8 @@ function DesktopHeader() {
                 <ShoppingBag className="size-5" aria-hidden />
                 {cartCount > 0 && <span className="tabular rounded bg-accent px-1.5 text-micro">{cartCount}</span>}
               </NavLink>
-              <NavLink to="/account" className={navClass}>
+              <NavLink to="/account" className={(s) => cx(navClass(s), 'flex items-center gap-2')}>
+                <Avatar name={profile?.full_name} path={profile?.avatar_path} size="sm" />
                 {profile?.full_name?.split(' ')[0] ?? 'Account'}
               </NavLink>
             </>

@@ -12,14 +12,14 @@ const MAX_DIMENSION = 1600;
  * photos stay small on slow mobile connections. Falls back to the original
  * file if the browser cannot decode it.
  */
-export async function prepareImage(file: File): Promise<Blob> {
+export async function prepareImage(file: File, maxDimension = MAX_DIMENSION): Promise<Blob> {
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
     throw new Error('Use a JPG, PNG or WebP image.');
   }
   if (file.size > 15 * 1024 * 1024) throw new Error('This image is too large. Use one under 15 MB.');
   try {
     const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
@@ -32,8 +32,8 @@ export async function prepareImage(file: File): Promise<Blob> {
 }
 
 /** Uploads to the public media bucket under a scoped prefix; returns the path. */
-export async function uploadMedia(prefix: string, file: File): Promise<string> {
-  const blob = await prepareImage(file);
+export async function uploadMedia(prefix: string, file: File, maxDimension?: number): Promise<string> {
+  const blob = await prepareImage(file, maxDimension);
   const ext = blob.type === 'image/webp' ? 'webp' : blob.type === 'image/png' ? 'png' : 'jpg';
   const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from('media').upload(path, blob, { contentType: blob.type, upsert: false });

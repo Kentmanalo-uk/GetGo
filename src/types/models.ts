@@ -26,6 +26,8 @@ export interface Profile {
   full_name: string | null;
   phone: string | null;
   email_verified_at: string | null;
+  /** Profile picture in the public media bucket (avatars/<id>/…). */
+  avatar_path: string | null;
 }
 
 export interface ServiceArea {

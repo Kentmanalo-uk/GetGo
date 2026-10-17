@@ -15,6 +15,7 @@ export {
   ArrowUpRightIcon as ArrowUpRight,
   BasketIcon as ShoppingBasket,
   BellIcon as Bell,
+  CameraIcon as Camera,
   BookOpenIcon as BookOpen,
   CaretDownIcon as ChevronDown,
   CaretRightIcon as ChevronRight,

@@ -29,7 +29,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const PROFILE_COLUMNS = 'id, email, full_name, phone, email_verified_at';
+const PROFILE_COLUMNS = 'id, email, full_name, phone, email_verified_at, avatar_path';
 
 /** Loads the profile, creating it if the account somehow doesn't have one yet. */
 async function loadProfile(userId: string): Promise<Profile> {
