@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
-import { Check, Copy, Phone, Star } from '@/components/icons';
+import { Check, Copy, Star } from '@/components/icons';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { EmptyState, ErrorState, Notice, PageLoading } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
@@ -15,6 +15,7 @@ import type { OrderWithItems } from '@/types/models';
 import { useOrder, useOrderRealtime, useOrderReview, useSubmitGcashPayment, useSubmitReview, useUpdateOrderStatus } from './api';
 import { OrderItemsList, OrderTotals } from './OrderViews';
 import { TaskSummary, isServiceOrder } from '@/features/services/TaskSummary';
+import { OrderRiderCard, RateRider } from '@/features/riders/RiderViews';
 
 function Progress({ order }: { order: OrderWithItems }) {
   const reached = progressIndex(order.status);
@@ -220,7 +221,8 @@ export default function OrderDetailPage() {
     );
   }
 
-  const rider = order.assignments.find((a) => a.status !== 'released')?.rider ?? null;
+  const assignment = order.assignments.find((a) => a.status !== 'released') ?? null;
+  const rider = assignment?.rider ?? null;
   const payment = order.payments;
   const justPlaced = params.get('placed') === '1' && order.status === 'pending';
 
@@ -258,12 +260,17 @@ export default function OrderDetailPage() {
             <h2 id="items-heading" className="text-heading font-semibold">
               {isServiceOrder(order) ? 'Request' : 'Items'}
             </h2>
-            {isServiceOrder(order) ? <TaskSummary order={order} /> : <OrderItemsList items={order.order_items} />}
+            {isServiceOrder(order) ? <TaskSummary order={order} /> : <OrderItemsList items={order.order_items} showImages />}
             <div className="border-t border-line pt-2">
               <OrderTotals order={order} />
             </div>
           </section>
 
+          {order.status === 'completed' && assignment && rider && (
+            <section aria-label="Rate your rider" className="border-t border-line pt-6">
+              <RateRider orderId={order.id} riderId={assignment.rider_id} riderName={rider.full_name.split(' ')[0]} />
+            </section>
+          )}
           {order.status === 'completed' && order.service === 'pabili' && (
             <section aria-label="Review" className="border-t border-line pt-6">
               <ReviewForm order={order} />
@@ -272,18 +279,7 @@ export default function OrderDetailPage() {
         </div>
 
         <aside className="space-y-6 text-small">
-          {rider && (
-            <section>
-              <h2 className="mb-1 font-semibold">Your rider</h2>
-              <p className="text-ink-2">
-                {rider.full_name} · {rider.vehicle_type}
-                {rider.plate_number && ` · ${rider.plate_number}`}
-              </p>
-              <a href={`tel:${rider.phone}`} className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4">
-                <Phone className="size-3.5" aria-hidden /> Call {rider.phone}
-              </a>
-            </section>
-          )}
+          {rider && assignment && <OrderRiderCard riderId={assignment.rider_id} rider={rider} canCall={order.status !== 'completed' && order.status !== 'cancelled'} />}
           {isServiceOrder(order) && (
             <section>
               <h2 className="mb-1 font-semibold">{order.service === 'padala' ? 'Pick up from' : 'Rider goes to'}</h2>

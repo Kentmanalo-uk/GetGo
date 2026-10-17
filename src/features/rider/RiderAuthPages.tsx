@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { userMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/Button';
-import { Field, Input, Select } from '@/components/ui/Field';
+import { Field, Input, PasswordInput, Select } from '@/components/ui/Field';
 import { Notice, PageLoading } from '@/components/ui/Feedback';
 import { AuthLayout, safeNext } from '@/features/auth/AuthPages';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -139,7 +139,7 @@ export function RiderSignInPage() {
           {(p) => <Input {...p} type="email" autoComplete="email" inputMode="email" {...form.register('email')} />}
         </Field>
         <Field label="Password" error={form.formState.errors.password?.message}>
-          {(p) => <Input {...p} type="password" autoComplete="current-password" {...form.register('password')} />}
+          {(p) => <PasswordInput {...p} autoComplete="current-password" {...form.register('password')} />}
         </Field>
         <Button type="submit" block size="lg" loading={form.formState.isSubmitting}>
           Sign in
@@ -276,7 +276,7 @@ export function RiderSignUpPage() {
               {(p) => <Input {...p} type="email" autoComplete="email" inputMode="email" {...form.register('email')} />}
             </Field>
             <Field label="Password" hint="At least 8 characters." error={e.password?.message}>
-              {(p) => <Input {...p} type="password" autoComplete="new-password" {...form.register('password')} />}
+              {(p) => <PasswordInput {...p} autoComplete="new-password" {...form.register('password')} />}
             </Field>
           </div>
         )}

@@ -62,6 +62,7 @@ const consumerRoutes: RouteObject[] = [
         lazy: lazy(() => import('@/features/consumer/CheckoutPage')),
       },
       { path: 'orders/:orderId', lazy: lazy(() => import('@/features/consumer/OrderDetailPage')) },
+      { path: 'riders/:riderId', lazy: lazyNamed(() => import('@/features/riders/RiderViews'), 'RiderProfilePage') },
       {
         path: 'padala',
         handle: { hideNav: true } satisfies RouteHandle,

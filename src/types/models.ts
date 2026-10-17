@@ -222,6 +222,8 @@ export interface OrderItem {
   line_total_minor: number;
   instructions: string | null;
   order_item_options: OrderItemOption[];
+  /** The product's current photo (null if the product was removed). */
+  product?: { image_path: string | null } | null;
 }
 
 export interface DeliveryAddressSnapshot {
@@ -311,6 +313,7 @@ export interface OrderPayment {
 
 export interface OrderRider {
   status: 'active' | 'completed' | 'released';
+  rider_id: string;
   rider: { full_name: string; phone: string; vehicle_type: string; plate_number: string | null } | null;
 }
 

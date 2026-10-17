@@ -7,6 +7,9 @@ import { formatDate } from '@/components/ui/Display';
 import type { IconComponent } from '@/components/icons';
 import { VEHICLE_LABELS } from './api';
 import { useRider } from './RiderLayout';
+import { AvatarPicker } from '@/features/profile/AvatarPicker';
+import { RiderStats, VerifiedBadge } from '@/features/riders/RiderViews';
+import { useRiderPublicProfile } from '@/features/riders/api';
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -43,19 +46,25 @@ export function RiderAccountPage() {
   const navigate = useNavigate();
   const areas = useServiceAreas();
   const area = areas.data?.find((a) => a.id === profile.service_area_id);
+  const publicProfile = useRiderPublicProfile(profile.user_id);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 pt-6 pb-6 lg:pt-10">
-      <header className="flex items-center gap-4">
-        <span className="inline-flex size-16 shrink-0 items-center justify-center rounded-full bg-accent-soft text-title font-bold text-accent-ink">
-          {profile.full_name.charAt(0).toUpperCase()}
-        </span>
-        <div className="min-w-0">
-          <h1 className="truncate text-title font-bold">{profile.full_name}</h1>
-          <p className="text-small text-ink-3">
+      <header className="rounded-sheet bg-surface p-5 shadow-card">
+        <AvatarPicker name={profile.full_name} />
+        <div className="mt-4 min-w-0">
+          <h1 className="flex flex-wrap items-center gap-2 text-title font-bold">
+            <span className="truncate">{profile.full_name}</span>
+            <VerifiedBadge />
+          </h1>
+          {publicProfile.data && <RiderStats profile={publicProfile.data} className="mt-1" />}
+          <p className="mt-1 text-small text-ink-3">
             GETGO rider since {formatDate(profile.created_at)}
             {auth.profile?.email && <span className="block truncate">{auth.profile.email}</span>}
           </p>
+          <Link to={`/riders/${profile.user_id}`} className="mt-3 inline-block text-small font-semibold underline underline-offset-4">
+            See your public profile
+          </Link>
         </div>
       </header>
 

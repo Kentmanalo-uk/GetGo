@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -15,8 +15,9 @@ import { ConfirmDialog, Sheet } from '@/components/ui/Sheet';
 import { cx } from '@/components/ui/cx';
 import { useToast } from '@/components/ui/Toast';
 import { supabase } from '@/lib/supabase';
-import { uploadMedia } from '@/lib/media';
 import { Avatar } from '@/components/Avatar';
+import { AvatarPicker } from '@/features/profile/AvatarPicker';
+import { useInstallApp } from '@/lib/install';
 import { unwrap, userMessage } from '@/lib/errors';
 import { useMarkNotificationsRead, useNotifications } from '@/features/notifications/api';
 import type { Address } from '@/types/models';
@@ -35,9 +36,6 @@ const profileSchema = z.object({
 
 function ProfileForm({ onDone }: { onDone: () => void }) {
   const { profile, userId, refreshIdentity } = useAuth();
-  const avatar = useSetAvatar();
-  const toast = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
   const save = useMutation({
     mutationFn: async (values: z.output<typeof profileSchema>) => unwrap(await supabase.from('profiles').update(values).eq('id', userId!)),
     onSuccess: async () => {
@@ -52,37 +50,7 @@ function ProfileForm({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="space-y-4" noValidate>
       <FormError error={save.error} />
-      <div className="flex items-center gap-4">
-        <Avatar name={profile?.full_name} path={profile?.avatar_path} size="lg" />
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" loading={avatar.isPending && avatar.variables !== null} onClick={() => inputRef.current?.click()}>
-            {profile?.avatar_path ? 'Change photo' : 'Add photo'}
-          </Button>
-          {profile?.avatar_path && (
-            <Button
-              variant="ghost"
-              size="sm"
-              loading={avatar.isPending && avatar.variables === null}
-              onClick={() => avatar.mutateAsync(null).then(() => toast('Profile picture removed'), () => undefined)}
-            >
-              Remove
-            </Button>
-          )}
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="sr-only"
-          tabIndex={-1}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) avatar.mutateAsync(file).then(() => toast('Profile picture updated'), () => undefined);
-          }}
-        />
-      </div>
-      <FormError error={avatar.error} />
+      <AvatarPicker />
       <Field label="Full name" error={form.formState.errors.full_name?.message}>
         {(p) => <Input {...p} autoComplete="name" {...form.register('full_name')} />}
       </Field>
@@ -94,20 +62,6 @@ function ProfileForm({ onDone }: { onDone: () => void }) {
       </Button>
     </form>
   );
-}
-
-/** Replaces the profile picture, then deletes the old file. */
-function useSetAvatar() {
-  const { profile, userId, refreshIdentity } = useAuth();
-  return useMutation({
-    mutationFn: async (file: File | null) => {
-      const old = profile?.avatar_path ?? null;
-      const path = file ? await uploadMedia(`avatars/${userId}`, file, 512) : null;
-      unwrap(await supabase.from('profiles').update({ avatar_path: path }).eq('id', userId!));
-      if (old) await supabase.storage.from('media').remove([old]);
-    },
-    onSuccess: () => refreshIdentity(),
-  });
 }
 
 /** Name, email and number as a card, with the profile picture (changed under Edit). */
@@ -128,6 +82,30 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
         </Button>
       </div>
     </section>
+  );
+}
+
+/** Shown when the app can be installed (Android/desktop prompt, or a hint on iPhone). */
+function InstallAppRow() {
+  const app = useInstallApp();
+  const [hint, setHint] = useState(false);
+  if (app.installed || (!app.canPrompt && !app.needsIosHint)) return null;
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => (app.canPrompt ? void app.install() : setHint((v) => !v))}
+        className="flex w-full items-center gap-4 py-3.5 text-left hover:bg-canvas sm:-mx-3 sm:w-[calc(100%+1.5rem)] sm:rounded-control sm:px-3"
+      >
+        <Download className="size-5 shrink-0 text-ink-2" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium">Install GETGO app</span>
+          <span className="block text-small text-ink-3">
+            {hint ? 'Tap the Share button in Safari, then “Add to Home Screen”.' : 'Open GETGO from your home screen'}
+          </span>
+        </span>
+      </button>
+    </li>
   );
 }
 
@@ -211,6 +189,7 @@ export function AccountPage() {
         <MenuLink to="/notifications" icon={Bell} label="Notifications" />
         <MenuLink to="/account/support" icon={LifeBuoy} label="Help and support requests" />
         <MenuLink to="/account/privacy" icon={Shield} label="Privacy and legal" detail="Terms, privacy policy and your data" />
+        <InstallAppRow />
       </ul>
 
       <h2 className="mt-8 mb-1 text-small font-semibold text-ink-3">GETGO for work</h2>

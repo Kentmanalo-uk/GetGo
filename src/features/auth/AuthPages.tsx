@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { userMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Field';
+import { Field, Input, PasswordInput } from '@/components/ui/Field';
 import { Notice } from '@/components/ui/Feedback';
 import { Logo } from '@/components/Logo';
 import { useAuth } from './AuthProvider';
@@ -98,7 +98,7 @@ export function SignInPage() {
           {(p) => <Input {...p} type="email" autoComplete="email" inputMode="email" {...form.register('email')} />}
         </Field>
         <Field label="Password" error={form.formState.errors.password?.message}>
-          {(p) => <Input {...p} type="password" autoComplete="current-password" {...form.register('password')} />}
+          {(p) => <PasswordInput {...p} autoComplete="current-password" {...form.register('password')} />}
         </Field>
         <Button type="submit" block size="lg" loading={form.formState.isSubmitting}>
           Sign in
@@ -182,7 +182,7 @@ export function SignUpPage() {
           {(p) => <Input {...p} type="tel" autoComplete="tel" inputMode="tel" placeholder="0917 123 4567" {...form.register('phone')} />}
         </Field>
         <Field label="Password" hint="At least 8 characters." error={form.formState.errors.password?.message}>
-          {(p) => <Input {...p} type="password" autoComplete="new-password" {...form.register('password')} />}
+          {(p) => <PasswordInput {...p} autoComplete="new-password" {...form.register('password')} />}
         </Field>
         <LegalConsent
           documents={['terms', 'privacy']}
@@ -246,7 +246,7 @@ export function ResetPasswordPage() {
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           {error && <Notice tone="danger">{error}</Notice>}
           <Field label="New password" error={form.formState.errors.password?.message}>
-            {(p) => <Input {...p} type="password" autoComplete="new-password" {...form.register('password')} />}
+            {(p) => <PasswordInput {...p} autoComplete="new-password" {...form.register('password')} />}
           </Field>
           <Button type="submit" block size="lg" loading={form.formState.isSubmitting}>
             Save password

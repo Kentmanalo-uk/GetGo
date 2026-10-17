@@ -1,14 +1,21 @@
-import { DataRow } from '@/components/ui/Display';
+import { DataRow, MediaImage } from '@/components/ui/Display';
 import { formatMoney } from '@/domain/money';
+import { cx } from '@/components/ui/cx';
 import type { Order, OrderItem } from '@/types/models';
 
 /** Itemized order lines with their purchased options, as snapshotted at checkout. */
-export function OrderItemsList({ items, showPrices = true }: { items: OrderItem[]; showPrices?: boolean }) {
+export function OrderItemsList({ items, showPrices = true, showImages }: { items: OrderItem[]; showPrices?: boolean; showImages?: boolean }) {
   return (
     <ul className="divide-y divide-line">
       {items.map((item) => (
         <li key={item.id} className="flex gap-3 py-3">
-          <span className="tabular w-7 shrink-0 font-semibold">{item.quantity}×</span>
+          {showImages &&
+            (item.product?.image_path ? (
+              <MediaImage path={item.product.image_path} alt="" className="size-14 shrink-0 rounded-media" />
+            ) : (
+              <span aria-hidden className="size-14 shrink-0 rounded-media bg-canvas" />
+            ))}
+          <span className={cx('tabular shrink-0 font-semibold', showImages ? 'pt-0.5' : 'w-7')}>{item.quantity}×</span>
           <div className="min-w-0 flex-1">
             <p className="font-semibold">
               {item.product_name}

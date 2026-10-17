@@ -12,6 +12,7 @@ import { Logo } from '@/components/Logo';
 import { IconContext } from '@/components/icons';
 import { IconGradientDefs } from '@/components/IconGradient';
 import { router } from '@/app/router';
+import '@/lib/install';
 
 function MissingConfiguration() {
   return (

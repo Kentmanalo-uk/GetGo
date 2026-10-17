@@ -430,10 +430,10 @@ export function usePlaceOrder() {
 // Orders
 // ---------------------------------------------------------------------------
 export const ORDER_SELECT =
-  '*, order_items(id, product_id, product_name, variant_name, unit_price_minor, quantity, line_total_minor, instructions, ' +
+  '*, order_items(id, product_id, product_name, variant_name, unit_price_minor, quantity, line_total_minor, instructions, product:products(image_path), ' +
   'order_item_options(id, group_name, option_name, price_delta_minor, quantity)), ' +
   'payments(id, status, amount_minor, refunded_minor, payee_name, payee_number, gcash_reference, sender_name, submitted_at, confirmed_at, rejection_note), ' +
-  'assignments(status, rider:rider_profiles(full_name, phone, vehicle_type, plate_number))';
+  'assignments(status, rider_id, rider:rider_profiles(full_name, phone, vehicle_type, plate_number))';
 
 export function useMyOrders(scope: 'active' | 'all' = 'all') {
   const { userId } = useAuth();

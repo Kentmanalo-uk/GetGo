@@ -543,6 +543,10 @@ export function PrivacyPage() {
                 <strong>Stores:</strong> stores don’t receive your personal details from GETGO. Your rider buys as a walk-in customer.
               </>,
               <>
+                <strong>Riders’ public profiles:</strong> signed-in users can see a rider’s first name and last initial, photo, vehicle type,
+                verified status, deliveries completed, rating and anonymous comments. Ratings you give are shown without your name.
+              </>,
+              <>
                 <strong>Service providers</strong> who process data for us under contract: Supabase (database, sign-in and file storage) and our web
                 hosting provider. When a rider taps “Directions”, the address is sent to Google Maps.
               </>,
@@ -889,6 +893,17 @@ export function RiderTermsPage() {
         <P>
           You’ll see customers’ names, numbers and addresses. Use them only to complete that request. Don’t save, share, post or contact customers for
           anything else. Misusing personal data can be a crime under the Data Privacy Act (RA 10173).
+        </P>
+      ),
+    },
+    {
+      id: 'profile',
+      title: 'Your public rider profile and ratings',
+      body: (
+        <P>
+          Customers can see your first name and last initial, profile photo, vehicle type, verified badge, number of completed deliveries, star
+          rating and their comments. Your phone and plate number are shown only to the customer of an order you’ve accepted. Customers rate you
+          after each delivery; ratings help GETGO keep service safe and may be considered when reviewing your account.
         </P>
       ),
     },

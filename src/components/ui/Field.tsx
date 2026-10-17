@@ -1,12 +1,13 @@
 import {
   forwardRef,
   useId,
+  useState,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
-import { ChevronDown, Minus, Plus } from '@/components/icons';
+import { ChevronDown, Eye, EyeOff, Minus, Plus } from '@/components/icons';
 import { cx } from './cx';
 
 const control =
@@ -62,6 +63,29 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     return <input ref={ref} className={cx(control, 'h-11', className)} {...rest} />;
   },
 );
+
+/** Password input with a show/hide button. */
+export const PasswordInput = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>>(function PasswordInput(
+  { className, ...rest },
+  ref,
+) {
+  const [visible, setVisible] = useState(false);
+  const Icon = visible ? EyeOff : Eye;
+  return (
+    <div className="relative">
+      <input ref={ref} type={visible ? 'text' : 'password'} className={cx(control, 'h-11 pr-11', className)} {...rest} />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-pressed={visible}
+        className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-control text-ink-3 hover:text-ink"
+      >
+        <Icon className="size-5" aria-hidden />
+      </button>
+    </div>
+  );
+});
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea(
   { className, rows = 3, ...rest },
