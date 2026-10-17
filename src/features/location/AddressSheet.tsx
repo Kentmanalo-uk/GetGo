@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Skeleton } from '@/components/ui/Feedback';
 import { Link } from 'react-router';
 import { Check, MapPin, Plus } from '@/components/icons';
 import { Sheet } from '@/components/ui/Sheet';
@@ -68,7 +69,9 @@ export function AddressSheet({ open, onClose }: { open: boolean; onClose: () => 
             <h3 id="areas-heading" className="mb-1 text-small font-semibold text-ink-3">
               {status === 'signed_in' ? 'Or browse an area' : 'Choose your area'}
             </h3>
-            {loc.areas.length === 0 ? (
+            {!loc.ready ? (
+              <Skeleton className="my-2 h-12" />
+            ) : loc.areas.length === 0 ? (
               <p className="py-3 text-ink-3">GETGO isn’t operating in any area yet.</p>
             ) : (
               <ul className="divide-y divide-line">
