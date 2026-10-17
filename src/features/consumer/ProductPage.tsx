@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ArrowLeft, ChevronRight } from '@/components/icons';
 import { ButtonLink, IconButton } from '@/components/ui/Button';
@@ -5,6 +6,8 @@ import { EmptyState, ErrorState, PageLoading } from '@/components/ui/Feedback';
 import { MediaImage, StoreMark } from '@/components/ui/Display';
 import { useProduct, useStorefront } from './api';
 import { useProductCustomizer } from './ProductSheet';
+import { recordView } from './recentlyViewed';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 /**
  * Item page (/stores/:slug/items/:productId).
@@ -15,6 +18,7 @@ import { useProductCustomizer } from './ProductSheet';
 export default function ProductPage() {
   const { slug, productId } = useParams();
   const navigate = useNavigate();
+  const { userId } = useAuth();
   const store = useStorefront(slug);
   const product = useProduct(productId);
   const storePath = `/stores/${slug}`;
@@ -26,7 +30,24 @@ export default function ProductPage() {
     onDone: () => navigate(storePath),
   });
 
-  const back = () => (window.history.length > 1 ? navigate(-1) : navigate(storePath));
+  // Remember this item for "Recently viewed" on the Account page (this device only).
+  useEffect(() => {
+    if (!p || !store.data) return;
+    const prices = p.product_variants.map((v) => v.price_minor);
+    recordView(userId, {
+      id: p.id,
+      name: p.name,
+      image_path: p.image_path,
+      price_minor: prices.length ? Math.min(...prices) : p.base_price_minor,
+      has_sizes: p.product_variants.length > 1,
+      is_available: p.is_available,
+      merchant_id: store.data.id,
+      merchant_name: store.data.name,
+      merchant_slug: store.data.slug,
+    });
+  }, [p, store.data, userId]);
+
+  const back =() => (window.history.length > 1 ? navigate(-1) : navigate(storePath));
 
   const topBar = (
     <header className="safe-top sticky top-0 z-20 bg-surface/95 backdrop-blur lg:hidden">

@@ -18,6 +18,8 @@ import { supabase } from '@/lib/supabase';
 import { Avatar } from '@/components/Avatar';
 import { AvatarPicker } from '@/features/profile/AvatarPicker';
 import { useInstallApp } from '@/lib/install';
+import { ItemCard } from './homeSections';
+import { useRecentlyViewed } from './recentlyViewed';
 import { unwrap, userMessage } from '@/lib/errors';
 import { useMarkNotificationsRead, useNotifications } from '@/features/notifications/api';
 import type { Address } from '@/types/models';
@@ -85,6 +87,31 @@ function ProfileCard({ onEdit }: { onEdit: () => void }) {
   );
 }
 
+/** Items opened recently on this device, as a sideways row. Hidden when empty. */
+function RecentlyViewed() {
+  const { items, clear } = useRecentlyViewed();
+  if (items.length === 0) return null;
+  return (
+    <section aria-labelledby="recent-heading" className="mb-8">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 id="recent-heading" className="text-heading font-semibold">
+          Recently viewed
+        </h2>
+        <button type="button" onClick={clear} className="text-small font-semibold text-ink-3 underline-offset-4 hover:text-ink hover:underline">
+          Clear
+        </button>
+      </div>
+      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:scroll-px-0 sm:px-0">
+        {items.map((item) => (
+          <div key={item.id} className="w-32 shrink-0 snap-start sm:w-36">
+            <ItemCard item={item} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /** Shown when the app can be installed (Android/desktop prompt, or a hint on iPhone). */
 function InstallAppRow() {
   const app = useInstallApp();
@@ -147,6 +174,7 @@ export function AccountPage() {
         >
           Save addresses, track orders and reorder from your favorite stores.
         </EmptyState>
+        <RecentlyViewed />
         <ul className="divide-y divide-line border-t border-line">
           <MenuLink to="/partner" icon={Store} label="List your store" detail="Free and optional" />
           <MenuLink to="/legal" icon={FileText} label="Terms and privacy" />
@@ -183,6 +211,8 @@ export function AccountPage() {
           Add a mobile number so stores and riders can reach you.
         </Notice>
       )}
+
+      <RecentlyViewed />
 
       <ul className="divide-y divide-line border-y border-line">
         <MenuLink to="/account/addresses" icon={MapPin} label="Addresses" />

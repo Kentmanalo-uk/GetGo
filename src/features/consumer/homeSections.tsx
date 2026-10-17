@@ -58,7 +58,7 @@ export function FeaturedItems({ id, title, items, section }: { id: string; title
           </Link>
         }
       />
-      <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:gap-4 sm:px-0">
+      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:scroll-px-0 sm:gap-4 sm:px-0">
         {items.map((item) => (
           <div key={item.id} className="w-36 shrink-0 snap-start sm:w-44">
             <ItemCard item={item} />
