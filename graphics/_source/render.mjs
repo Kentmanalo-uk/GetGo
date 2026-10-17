@@ -11,6 +11,7 @@ import * as Icons from '@phosphor-icons/react';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { PROMO_CSS, promoDesigns } from './promo.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..'); // graphics/
@@ -35,27 +36,26 @@ const icon = (name, cls = 'grad') => `<span class="ic ${cls}">${renderToStaticMa
 const logo = (size, variant = '') => `<span class="logo ${variant}" style="font-size:${size}px">GET<span class="amp">&amp;</span><span class="go">GO</span></span>`;
 
 /**
- * The GETGO mark: a forward-leaning ampersand (the "&" in GET & GO) with two
- * speed lines trailing behind it, the rider motif. Drawn on a 1024 grid.
- *   tile:  'rounded' (app icon), 'square' (full bleed) or null (glyph only)
+ * The official GETGO logo: two linked rings (the G and O of GO) with an arrow
+ * running through them. Vector rebuilt from logo/pink-icon.jpg and
+ * logo/white-icon.jpg; the path is drawn in a 1000 × GO_H box.
+ *   tile:  'rounded' (app icon), 'square' (full bleed) or null (logo only)
  *   glyph: 'white', 'pink' (#e0266f) or 'ink'
  *   bg:    'pink' (#e0266f), 'ink' or 'white' (when there is a tile)
- *   scale: glyph size inside the square (for maskable and circle crops)
+ *   size:  logo width as a share of the square (smaller for maskable and circle crops)
  */
-const AMP = 'M 690 780 L 420 510 C 347 437 365 270 468 270 C 563 270 585 375 517 435 L 388 548 C 294 630 332 792 462 792 C 560 792 620 720 680 640';
-const LINES = 'M 150 520 H 285 M 178 662 H 262';
-const mark = ({ tile = 'rounded', glyph = 'white', scale = 1, bg = 'pink' } = {}) => {
-  // The app's pink (#e0266f, as on its buttons and the GO box).
-  const fill = bg === 'pink' ? C.fill : bg === 'ink' ? C.ink : '#fff';
-  const stroke = glyph === 'white' ? '#fff' : glyph === 'ink' ? C.ink : C.fill;
-  const rect = tile ? `<rect width="1024" height="1024" ${tile === 'rounded' ? 'rx="230" ' : ''}fill="${fill}"/>` : '';
+const GO = 'M523.6 651.3A349 349 0 1 1 698.1 349L593.1 349A244.1 244.1 0 1 0 471.1 560.4ZM476.4 46.8A349 349 0 1 1 301.9 349L406.9 349A244.1 244.1 0 1 0 528.9 137.7ZM322.8 277.3L633 277.3L633 416.1L308.4 416.1A349 349 0 0 1 306.8 290.8A16.2 16.2 0 0 1 322.8 277.3ZM679.2 235.8L820.9 344.8A19.7 19.7 0 0 1 820.1 376.6L591.8 533.8A19.1 19.1 0 0 1 561.9 518.1L561.9 468.5Z';
+const GO_H = 698.1;
+const colour = (name) => (name === 'white' ? '#fff' : name === 'ink' ? C.ink : C.fill);
+const mark = ({ tile = 'rounded', glyph = 'white', size = 0.8, bg = 'pink' } = {}) => {
+  const rect = tile ? `<rect width="1024" height="1024" ${tile === 'rounded' ? 'rx="230" ' : ''}fill="${colour(bg)}"/>` : '';
+  const k = (1024 * size) / 1000;
+  const x = (1024 - 1000 * k) / 2, y = (1024 - GO_H * k) / 2;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
-${rect}
-<g fill="none" stroke="${stroke}" stroke-linecap="round" stroke-linejoin="round" transform="translate(512 512) scale(${scale}) translate(-512 -512) translate(28 -30)">
-<path stroke-width="100" transform="translate(130 0) skewX(-9)" d="${AMP}"/>
-<path stroke-width="68" d="${LINES}"/>
-</g></svg>`;
+${rect}<path fill="${colour(glyph)}" transform="translate(${+x.toFixed(2)} ${+y.toFixed(2)}) scale(${+k.toFixed(5)})" d="${GO}"/></svg>`;
 };
+// The logo alone, cropped to its edges (for the standalone SVG files and the favicon).
+const goSvg = (glyph) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 ${GO_H}"><path fill="${colour(glyph)}" d="${GO}"/></svg>`;
 
 const base = (w, h) => `
 @font-face {
@@ -74,6 +74,8 @@ body { font-family: 'Jakarta', system-ui, sans-serif; color: ${C.ink}; -webkit-f
 .ic { display: block; width: 100%; height: 100%; line-height: 0; } .ic svg { display: block; width: 100%; height: 100%; }
 .grad svg path { fill: url(#pink); }
 .white svg path { fill: #fff; }
+.mute svg path { fill: #9a96a0; }
+.ink svg path { fill: ${C.ink}; }
 .road { height: 0.6em; border-radius: 1em; background: repeating-linear-gradient(90deg, ${C.pink} 0 2.2em, transparent 2.2em 3.6em);
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
 .wind { position: absolute; height: 0.35em; border-radius: 1em; background: ${C.pink}; }
@@ -93,12 +95,6 @@ const rider = (size, white = false) => `
   <span class="wind" style="${white ? 'background:#fff;' : ''}width:${size * 0.22}px;top:${size * 0.2}px;left:${size * 0.32}px;opacity:.3"></span>
   <div style="margin-left:${size * 0.8}px;width:${size}px;height:${size}px">${icon('Motorcycle', white ? 'white' : 'grad')}</div>
   <div class="road" style="margin-top:${size * 0.08}px${white ? ';background:repeating-linear-gradient(90deg,#fff 0 2.2em,transparent 2.2em 3.6em)' : ''}"></div>
-</div>`;
-
-const footer = (dark) => `
-<div style="position:absolute;left:80px;right:80px;bottom:70px;display:flex;align-items:center;justify-content:space-between">
-  ${logo(56, dark ? 'inv' : '')}
-  <span style="font-size:26px;font-weight:700;color:${dark ? 'rgba(255,255,255,.75)' : C.ink3}">Now in Bongabong, Oriental Mindoro</span>
 </div>`;
 
 const services = [
@@ -125,20 +121,20 @@ const DESIGNS = [
     body: `<div style="height:100%;display:grid;place-items:center">${logo(500, 'onpink')}</div>` },
   // The mark (primary symbol).
   // The icon on its own: pink (for light backgrounds, the favicon) and white (for pink, dark or photos).
-  { out: 'logo/getgo-icon-pink-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'pink' }) },
-  { out: 'logo/getgo-icon-white-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'white' }) },
+  { out: 'logo/getgo-icon-pink-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'pink', size: 0.94 }) },
+  { out: 'logo/getgo-icon-white-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'white', size: 0.94 }) },
   // The app icon: the white icon on the app's pink.
   { out: 'logo/getgo-app-icon-1024.png', w: 1024, h: 1024, transparent: true, body: mark() },
-  { out: 'logo/getgo-app-icon-square-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', scale: 0.86 }) },
-  { out: 'logo/getgo-icon-on-dark-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', bg: 'ink', glyph: 'pink', scale: 0.86 }) },
+  { out: 'logo/getgo-app-icon-square-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', size: 0.84 }) },
+  { out: 'logo/getgo-icon-on-dark-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', bg: 'ink', glyph: 'pink', size: 0.84 }) },
   // Primary logo: the mark with the wordmark.
   { out: 'logo/getgo-lockup.png', w: 2600, h: 900, transparent: true,
-    body: `<div style="height:100%;display:flex;align-items:center;justify-content:center;gap:110px"><div style="width:560px;height:560px">${mark()}</div>${logo(400)}</div>` },
+    body: `<div style="height:100%;display:flex;align-items:center;justify-content:center;gap:120px"><div style="width:680px;display:flex">${goSvg('pink')}</div>${logo(400)}</div>` },
   { out: 'logo/getgo-lockup-white.png', w: 2600, h: 900, transparent: true,
-    body: `<div style="height:100%;display:flex;align-items:center;justify-content:center;gap:110px"><div style="width:560px;height:560px">${mark()}</div>${logo(400, 'inv')}</div>` },
+    body: `<div style="height:100%;display:flex;align-items:center;justify-content:center;gap:120px"><div style="width:680px;display:flex">${goSvg('pink')}</div>${logo(400, 'inv')}</div>` },
   // Profile photos (circle-safe).
-  { out: 'logo/profile-picture-1080.png', w: 1080, h: 1080, body: mark({ tile: 'square', scale: 0.74 }) },
-  { out: 'logo/profile-picture-dark-1080.png', w: 1080, h: 1080, body: mark({ tile: 'square', bg: 'ink', glyph: 'pink', scale: 0.74 }) },
+  { out: 'logo/profile-picture-1080.png', w: 1080, h: 1080, body: mark({ tile: 'square', size: 0.7 }) },
+  { out: 'logo/profile-picture-dark-1080.png', w: 1080, h: 1080, body: mark({ tile: 'square', bg: 'ink', glyph: 'pink', size: 0.7 }) },
   { out: 'logo/profile-picture-wordmark-1080.png', w: 1080, h: 1080,
     css: `body{background:radial-gradient(circle at 50% 40%, ${C.soft}, #fff 70%)}`,
     body: `<div style="height:100%;display:grid;place-items:center">${logo(190)}</div>` },
@@ -146,8 +142,8 @@ const DESIGNS = [
   // ----- App icons (written into the web app's public/ folder) -----
   { out: '../public/pwa-192.png', w: 192, h: 192, transparent: true, body: mark() },
   { out: '../public/pwa-512.png', w: 512, h: 512, transparent: true, body: mark() },
-  { out: '../public/maskable-512.png', w: 512, h: 512, body: mark({ tile: 'square', scale: 0.72 }) },
-  { out: '../public/apple-touch-icon.png', w: 180, h: 180, body: mark({ tile: 'square', scale: 0.86 }) },
+  { out: '../public/maskable-512.png', w: 512, h: 512, body: mark({ tile: 'square', size: 0.7 }) },
+  { out: '../public/apple-touch-icon.png', w: 180, h: 180, body: mark({ tile: 'square', size: 0.8 }) },
 
   // ----- Covers -----------------------------------------------------------
   // Facebook page cover. Key content stays in the centre so phone crops keep it.
@@ -177,166 +173,8 @@ const DESIGNS = [
       </div>
       <div style="position:absolute;right:70px;bottom:50px">${rider(120)}</div>` },
 
-  // ----- Launch promotion ---------------------------------------------------
-  { out: 'promotion/01-launch-square-1080.png', w: 1080, h: 1080,
-    css: `body{background:#fff}`,
-    body: `
-      <div class="blob" style="width:620px;height:620px;background:#ffd6e8;right:-220px;top:-220px;opacity:.9"></div>
-      <div class="blob" style="width:520px;height:520px;background:${C.soft};left:-200px;bottom:-160px"></div>
-      <div style="position:absolute;left:80px;right:80px;top:80px">
-        <div>${logo(60)}</div>
-        <div class="chip" style="margin-top:70px;background:${C.fill};color:#fff;font-size:28px">● Now live</div>
-        <div class="h" style="font-size:120px;margin-top:28px">GETGO is here,<br/><span style="color:${C.fill}">Bongabong!</span></div>
-        <div class="sub" style="font-size:36px;margin-top:30px;max-width:820px">Food, shops, padala and errands — delivered by riders from your town.</div>
-      </div>
-      <div style="position:absolute;left:60px;bottom:200px">${rider(150)}</div>
-      <div style="position:absolute;left:80px;right:80px;bottom:80px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:34px;font-weight:800">Order now <span style="color:${C.fill}">→</span> link in bio</span>
-        <span style="font-size:24px;font-weight:700;color:${C.ink3}">Oriental Mindoro</span>
-      </div>` },
-  { out: 'promotion/02-launch-story-1080x1920.png', w: 1080, h: 1920,
-    css: `body{background:linear-gradient(180deg,#fff 0%, ${C.soft} 100%)}`,
-    body: `
-      <div class="blob" style="width:760px;height:760px;background:#ffd6e8;right:-300px;top:-200px;opacity:.9"></div>
-      <div style="position:absolute;left:90px;right:90px;top:250px">
-        <div>${logo(76)}</div>
-        <div class="chip" style="margin-top:110px;background:${C.fill};color:#fff;font-size:34px">● Now live in Bongabong</div>
-        <div class="h" style="font-size:150px;margin-top:40px">Pabili.<br/>Padala.<br/>Errands.<br/><span style="color:${C.fill}">GETGO na!</span></div>
-        <div class="sub" style="font-size:42px;margin-top:44px">Local riders buy, pick up and deliver for you — pay by GCash or cash when available.</div>
-      </div>
-      <div style="position:absolute;left:70px;bottom:330px">${rider(170)}</div>
-      <div style="position:absolute;left:90px;right:90px;bottom:170px;text-align:center">
-        <div style="display:inline-block;background:${C.ink};color:#fff;border-radius:999px;padding:28px 60px;font-size:42px;font-weight:800">Order now · link in bio</div>
-      </div>` },
-  { out: 'promotion/03-services-1080x1350.png', w: 1080, h: 1350,
-    css: `body{background:${C.ink};color:#fff}`,
-    body: `
-      <div class="blob" style="width:600px;height:600px;background:${C.fill};left:-260px;top:-260px;opacity:.5"></div>
-      <div style="position:absolute;left:80px;right:80px;top:110px">
-        <div class="h" style="font-size:96px;color:#fff">One app.<br/><span style="color:${C.pink}">Four ways we help.</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:70px">
-          ${services
-            .map(
-              ([i, t, d]) => `<div style="background:#fff;border-radius:36px;padding:44px 40px;color:${C.ink}">
-                <div style="width:96px;height:96px">${icon(i)}</div>
-                <div style="font-size:46px;font-weight:800;margin-top:26px;letter-spacing:-.02em">${t}</div>
-                <div style="font-size:26px;color:${C.ink3};margin-top:8px;line-height:1.3;font-weight:500">${d}</div>
-              </div>`,
-            )
-            .join('')}
-        </div>
-      </div>
-      ${footer(true)}` },
-  { out: 'promotion/04-how-it-works-1080x1350.png', w: 1080, h: 1350,
-    css: `body{background:#fff}`,
-    body: `
-      <div class="blob" style="width:560px;height:560px;background:${C.soft};right:-200px;top:-180px"></div>
-      <div style="position:absolute;left:80px;right:80px;top:110px">
-        <div class="h" style="font-size:96px">How <span style="color:${C.fill}">GETGO</span> works</div>
-        ${[
-          ['DeviceMobile', 'Order in the app', 'Pick from stores in town, or send a padala or errand.'],
-          ['Motorcycle', 'A local rider accepts', 'You see their name and rating. Pay by GCash — or cash on delivery when your rider offers it.'],
-          ['CheckCircle', 'Bought and delivered', 'Your rider buys at the counter and brings it to your door. Unused money comes back to you.'],
-        ]
-          .map(
-            ([i, t, d], n) => `<div style="display:flex;gap:40px;align-items:flex-start;margin-top:${n ? 56 : 80}px">
-              <div style="flex:none;width:130px;height:130px;border-radius:36px;background:${C.soft};display:grid;place-items:center">
-                <div style="width:76px;height:76px">${icon(i)}</div>
-              </div>
-              <div>
-                <div style="font-size:30px;font-weight:800;color:${C.fill}">Step ${n + 1}</div>
-                <div style="font-size:52px;font-weight:800;letter-spacing:-.025em;margin-top:4px">${t}</div>
-                <div class="sub" style="font-size:30px;margin-top:10px">${d}</div>
-              </div>
-            </div>`,
-          )
-          .join('')}
-      </div>
-      ${footer(false)}` },
-  { out: 'promotion/05-pay-your-way-1080x1080.png', w: 1080, h: 1080,
-    css: `body{background:${C.fill};color:#fff}`,
-    body: `
-      <div class="blob" style="width:600px;height:600px;background:${C.pink};right:-200px;top:-220px;opacity:.9"></div>
-      <div style="position:absolute;left:80px;right:80px;top:90px">
-        <div>${logo(56, 'onpink')}</div>
-        <div class="h" style="font-size:120px;margin-top:80px;color:#fff">Pay your way.</div>
-        <div style="display:flex;gap:28px;margin-top:60px">
-          ${[
-            ['Wallet', 'GCash', 'Send to your rider in the app'],
-            ['Money', 'Cash on delivery', 'When your rider offers it'],
-          ]
-            .map(
-              ([i, t, d]) => `<div style="flex:1;background:#fff;color:${C.ink};border-radius:36px;padding:44px 40px">
-                <div style="width:90px;height:90px">${icon(i)}</div>
-                <div style="font-size:46px;font-weight:800;margin-top:22px;letter-spacing:-.02em">${t}</div>
-                <div style="font-size:26px;color:${C.ink3};margin-top:8px;font-weight:500">${d}</div>
-              </div>`,
-            )
-            .join('')}
-        </div>
-      </div>
-      <div style="position:absolute;right:40px;bottom:150px">${rider(130, true)}</div>
-      <div style="position:absolute;left:80px;right:80px;bottom:80px;font-size:30px;font-weight:700;color:rgba(255,255,255,.9)">No hidden charges — you see the total before you order.</div>` },
-  { out: 'promotion/06-ride-with-getgo-1080x1350.png', w: 1080, h: 1350,
-    css: `body{background:${C.ink};color:#fff}`,
-    body: `
-      <div class="blob" style="width:640px;height:640px;background:${C.fill};right:-260px;bottom:-200px;opacity:.55"></div>
-      <div style="position:absolute;left:80px;right:80px;top:110px">
-        <div class="chip" style="background:rgba(255,255,255,.1);color:#fff;font-size:28px">Now hiring riders in Bongabong</div>
-        <div class="h" style="font-size:118px;margin-top:40px;color:#fff">Ride with<br/><span style="color:${C.pink}">GETGO.</span></div>
-        <div style="font-size:36px;margin-top:30px;color:rgba(255,255,255,.8);font-weight:500;line-height:1.35">Earn delivering in your own town — on your own schedule.</div>
-        <div style="margin-top:56px;display:grid;gap:26px">
-          ${['Choose the jobs you want', 'Customers pay you directly', 'Keep the delivery fees']
-            .map((t) => `<div style="display:flex;gap:22px;align-items:center;font-size:38px;font-weight:700"><span style="width:52px;height:52px">${icon('CheckCircle')}</span>${t}</div>`)
-            .join('')}
-        </div>
-      </div>
-      <div style="position:absolute;right:30px;bottom:230px">${rider(170)}</div>
-      <div style="position:absolute;left:80px;bottom:80px;right:80px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:34px;font-weight:800">Sign up as a rider <span style="color:${C.pink}">→</span> link in bio</span>
-        ${logo(48, 'inv')}
-      </div>` },
-  { out: 'promotion/07-partner-with-getgo-1080x1350.png', w: 1080, h: 1350,
-    css: `body{background:#fff}`,
-    body: `
-      <div class="blob" style="width:640px;height:640px;background:#ffd6e8;left:-260px;bottom:-240px;opacity:.9"></div>
-      <div style="position:absolute;left:80px;right:80px;top:110px">
-        <div style="width:150px;height:150px">${icon('Storefront')}</div>
-        <div class="h" style="font-size:110px;margin-top:36px">Partner with<br/><span style="color:${C.fill}">GETGO.</span></div>
-        <div class="sub" style="font-size:36px;margin-top:28px">Own a store in Bongabong? Reach more customers — riders buy at your counter like any walk-in.</div>
-        <div style="margin-top:56px;display:grid;gap:26px">
-          ${['Free to join', 'No commission', 'No tablet or extra app needed']
-            .map((t) => `<div style="display:flex;gap:22px;align-items:center;font-size:36px;font-weight:700"><span style="flex:none;width:50px;height:50px">${icon('CheckCircle')}</span>${t}</div>`)
-            .join('')}
-        </div>
-      </div>
-      <div style="position:absolute;left:80px;bottom:80px;right:80px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:34px;font-weight:800">Become a partner <span style="color:${C.fill}">→</span> link in bio</span>
-        ${logo(48)}
-      </div>` },
-  { out: 'promotion/08-padala-errands-1080x1080.png', w: 1080, h: 1080,
-    css: `body{background:linear-gradient(160deg, ${C.soft}, #fff 60%)}`,
-    body: `
-      <div style="position:absolute;left:80px;right:80px;top:90px">
-        <div>${logo(56)}</div>
-        <div class="h" style="font-size:104px;margin-top:70px">Need something<br/><span style="color:${C.fill}">done in town?</span></div>
-        <div style="display:flex;gap:28px;margin-top:60px">
-          ${[
-            ['Package', 'Padala', 'Send documents and parcels to anyone in Bongabong.'],
-            ['ListChecks', 'Errands', 'Buy medicine, pay bills or pick something up.'],
-          ]
-            .map(
-              ([i, t, d]) => `<div style="flex:1;background:#fff;border-radius:36px;padding:40px;box-shadow:0 10px 50px rgba(0,0,0,.08)">
-                <div style="width:90px;height:90px">${icon(i)}</div>
-                <div style="font-size:46px;font-weight:800;margin-top:22px;letter-spacing:-.02em">${t}</div>
-                <div style="font-size:26px;color:${C.ink3};margin-top:8px;line-height:1.3;font-weight:500">${d}</div>
-              </div>`,
-            )
-            .join('')}
-        </div>
-      </div>
-      <div style="position:absolute;right:30px;bottom:60px">${rider(120)}</div>
-      <div style="position:absolute;left:80px;right:80px;bottom:80px;font-size:34px;font-weight:800">A rider handles it <span style="color:${C.fill}">→</span> link in bio</div>` },
+  // ----- Launch promotion (see promo.mjs) --------------------------------
+  ...promoDesigns({ C, icon, logo, goSvg }),
 ];
 
 // ---------------------------------------------------------------------------
@@ -359,7 +197,7 @@ const only = process.argv[2];
 for (const d of DESIGNS) {
   if (only && !d.out.includes(only)) continue;
   const name = d.out.replace(/\//g, '__').replace(/\.png$/, '.html');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><style>${base(d.w, d.h)}${d.bg ? `body{background:${d.bg}}` : ''}${d.css ?? ''}</style></head><body>${DEFS}${d.body}</body></html>`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>${base(d.w, d.h)}${PROMO_CSS}${d.bg ? `body{background:${d.bg}}` : ''}${d.css ?? ''}</style></head><body>${DEFS}${d.body}</body></html>`;
   const file = join(pagesDir, name);
   writeFileSync(file, html);
   const page = await browser.newPage({ viewport: { width: d.w, height: d.h }, deviceScaleFactor: 1 });
@@ -373,13 +211,9 @@ for (const d of DESIGNS) {
 }
 await browser.close();
 
-// Vector files, and the same mark as the web app's favicon.
-// Vector files. The browser tab icon is the pink icon on its own.
-// Standalone files: no fixed size, and icon-only files cropped close to the glyph.
-const file = (svg) => svg.replace(' width="100%" height="100%"', '');
-const tight = (svg) => file(svg).replace('viewBox="0 0 1024 1024"', 'viewBox="125 161 680 680"');
-writeFileSync(join(root, 'logo', 'getgo-icon-pink.svg'), tight(mark({ tile: null, glyph: 'pink' })));
-writeFileSync(join(root, 'logo', 'getgo-icon-white.svg'), tight(mark({ tile: null, glyph: 'white' })));
-writeFileSync(join(root, 'logo', 'getgo-app-icon.svg'), file(mark()));
-writeFileSync(join(root, '..', 'public', 'favicon.svg'), tight(mark({ tile: null, glyph: 'pink' })));
+// Vector files. The browser tab icon is the pink logo on its own.
+writeFileSync(join(root, 'logo', 'getgo-icon-pink.svg'), goSvg('pink'));
+writeFileSync(join(root, 'logo', 'getgo-icon-white.svg'), goSvg('white'));
+writeFileSync(join(root, 'logo', 'getgo-app-icon.svg'), mark().replace(' width="100%" height="100%"', ''));
+writeFileSync(join(root, '..', 'public', 'favicon.svg'), goSvg('pink'));
 console.log('✓ logo/getgo-icon-pink.svg, getgo-icon-white.svg, getgo-app-icon.svg and public/favicon.svg');

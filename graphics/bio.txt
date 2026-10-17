@@ -1,0 +1,47 @@
+GETGO · Facebook Page details
+Copy each part into the matching field in your Page settings.
+
+
+BIO (Intro, max 101 characters)
+---------------------------------
+Pabili, padala & errands in Bongabong 🛵 Local riders, pay by GCash or cash. Order na sa GETGO!
+
+
+ABOUT (Page description)
+---------------------------------
+GETGO is a local pabili, padala and errand service for Bongabong, Oriental Mindoro.
+
+Order food and items from stores in town, send parcels and documents, or have a rider run errands for you, like buying medicine or paying bills. A local rider accepts your order, buys it at the counter and brings it to your door.
+
+💗 Food · Shops · Padala · Errands
+💸 Pay your rider by GCash, or cash on delivery when your rider offers it
+👀 You see the total before you order
+🛵 Riders from our own town
+
+Want to earn as a rider, or list your store? Message us or visit the link below.
+
+
+CATEGORY
+---------------------------------
+Delivery Service (add "Local Service" as a second category)
+
+
+LOCATION / SERVICE AREA
+---------------------------------
+Bongabong, Oriental Mindoro, Philippines
+
+
+WEBSITE
+---------------------------------
+Your GETGO web address (your Vercel or custom domain)
+
+
+ACTION BUTTON
+---------------------------------
+"Order Now" → your GETGO web address
+
+
+PROFILE PICTURE AND COVER
+---------------------------------
+Profile picture: graphics/logo/profile-picture-1080.png
+Cover photo: graphics/cover/facebook-cover-1640x624.png
