@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Bell, Bike, ChevronRight, FileText, LifeBuoy, LogOut, MapPin, Shield, Store } from '@/components/icons';
+import { Bell, Bike, ChevronRight, Download, FileText, LifeBuoy, LogOut, MapPin, Shield, Store, Trash2 } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { VerifyEmailBanner } from '@/features/auth/VerifyEmailBanner';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -141,6 +141,7 @@ export function AccountPage() {
         <MenuLink to="/account/addresses" icon={MapPin} label="Addresses" />
         <MenuLink to="/notifications" icon={Bell} label="Notifications" />
         <MenuLink to="/account/support" icon={LifeBuoy} label="Help and support requests" />
+        <MenuLink to="/account/privacy" icon={Shield} label="Privacy and legal" detail="Terms, privacy policy and your data" />
       </ul>
 
       <h2 className="mt-8 mb-1 text-small font-semibold text-ink-3">GETGO for work</h2>
@@ -157,8 +158,6 @@ export function AccountPage() {
         )}
         {auth.isStaff && <MenuLink to="/admin" icon={Shield} label="GETGO Admin" />}
       </ul>
-
-      <YourData />
 
       <Button
         variant="ghost"
@@ -180,36 +179,52 @@ export function AccountPage() {
   );
 }
 
-/** Data Privacy Act rights: a copy of your data, and account deletion. */
-function YourData() {
+function ActionRow({ icon: Icon, label, detail, onClick, loading, danger }: { icon: typeof Bell; label: string; detail?: string; onClick: () => void; loading?: boolean; danger?: boolean }) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={loading}
+        className="flex w-full items-center gap-4 py-3.5 text-left hover:bg-canvas disabled:opacity-60 sm:-mx-3 sm:w-[calc(100%+1.5rem)] sm:rounded-control sm:px-3"
+      >
+        <Icon className={cx('size-5 shrink-0', danger ? 'text-danger' : 'text-ink-2')} aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className={cx('block font-medium', danger && 'text-danger')}>{loading ? 'Preparing…' : label}</span>
+          {detail && <span className="block truncate text-small text-ink-3">{detail}</span>}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** Legal documents and Data Privacy Act tools: a copy of your data, and account deletion. */
+export function PrivacyCenterPage() {
   const exportData = useExportMyData();
   const deletion = useRequestAccountDeletion();
   const navigate = useNavigate();
   const toast = useToast();
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
-    <section id="your-data" aria-labelledby="your-data-heading" className="scroll-mt-24">
-      <h2 id="your-data-heading" className="mt-8 mb-1 text-small font-semibold text-ink-3">
-        Privacy and legal
-      </h2>
+    <div className="page-x mx-auto max-w-3xl pb-10">
+      <PageHeader title="Privacy and legal" back="/account" />
       <ul className="divide-y divide-line border-y border-line">
         <MenuLink to="/legal/terms" icon={FileText} label="Terms of Service" />
         <MenuLink to="/legal/privacy" icon={Shield} label="Privacy Policy" />
-        <MenuLink to="/legal/stores" icon={Store} label="Store listings" detail="Stores on GETGO are independent" />
+        <MenuLink to="/legal/stores" icon={Store} label="Store listings" />
       </ul>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
+
+      <h2 className="mt-8 mb-1 text-small font-semibold text-ink-3">Your data</h2>
+      <ul className="divide-y divide-line border-y border-line">
+        <ActionRow
+          icon={Download}
+          label="Download my data"
+          detail="A copy of your account, addresses and orders"
           loading={exportData.isPending}
           onClick={() => exportData.mutateAsync().then(() => toast('Your data was downloaded'), () => undefined)}
-        >
-          Download my data
-        </Button>
-        <Button variant="danger-quiet" size="sm" onClick={() => setConfirmDelete(true)}>
-          Request account deletion
-        </Button>
-      </div>
+        />
+        <ActionRow icon={Trash2} label="Delete my account" detail="Sends a deletion request to GETGO support" danger onClick={() => setConfirmDelete(true)} />
+      </ul>
       {exportData.error && (
         <Notice tone="danger" className="mt-3">
           {userMessage(exportData.error)}
@@ -234,7 +249,7 @@ function YourData() {
           navigate(`/account/support/${ticketId}`);
         }}
       />
-    </section>
+    </div>
   );
 }
 

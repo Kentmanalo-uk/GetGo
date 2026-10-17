@@ -11,7 +11,6 @@ import { useLocationContext } from '@/features/location/LocationProvider';
 import { AddressSheet } from '@/features/location/AddressSheet';
 import { useUnreadCount } from '@/features/notifications/api';
 import { env } from '@/lib/supabase';
-import { AcceptTermsBanner } from '@/features/legal/LegalConsent';
 
 export interface RouteHandle {
   /** Hide the mobile bottom navigation (focused flows like checkout). */
@@ -257,7 +256,6 @@ export function ConsumerLayout() {
     <div className="flex min-h-dvh flex-col">
       <DesktopHeader />
       {!hideNav && <MobileTopBar />}
-      <AcceptTermsBanner />
       <main id="main" className={cx('flex-1', !hideNav && 'pb-20 lg:pb-0')}>
         <Outlet />
       </main>

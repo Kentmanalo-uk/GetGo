@@ -91,8 +91,7 @@ export function RiderAccountPage() {
       <nav aria-label="More" className="divide-y divide-line border-y border-line">
         <MenuLink to="/rider/notifications" icon={Bell} label="Notifications" />
         <MenuLink to="/account/support" icon={LifeBuoy} label="Support requests" />
-        <MenuLink to="/legal/riders" icon={FileText} label="Rider Terms" />
-        <MenuLink to="/legal/privacy" icon={FileText} label="Privacy Policy" />
+        <MenuLink to="/legal" icon={FileText} label="Terms and privacy" />
         <MenuLink to="/" icon={Store} label="Order on GETGO" />
         <MenuLink icon={LogOut} label="Sign out" onClick={() => auth.signOut().then(() => navigate('/rider/sign-in'))} />
       </nav>

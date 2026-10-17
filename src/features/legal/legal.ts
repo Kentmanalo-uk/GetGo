@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/features/auth/AuthProvider';
 import { env, supabase } from '@/lib/supabase';
 import { unwrap } from '@/lib/errors';
 
@@ -56,19 +55,6 @@ export function operatorDetails(s: LegalSettings | null | undefined) {
     supportEmail: supportEmail || null,
     supportPhone: supportPhone || null,
   };
-}
-
-/** Which documents the signed-in person has accepted at the current version. */
-export function useMyAcceptances() {
-  const { userId } = useAuth();
-  return useQuery({
-    queryKey: ['legal-acceptances', userId],
-    enabled: Boolean(userId),
-    queryFn: async () =>
-      (unwrap(await supabase.from('legal_acceptances').select('document, version').eq('user_id', userId!).eq('version', LEGAL_VERSION)) as Array<{
-        document: LegalDocument;
-      }>).map((r) => r.document),
-  });
 }
 
 export function useAcceptLegal() {

@@ -599,12 +599,12 @@ export function PrivacyPage() {
             items={[
               'Be informed about how your data is processed (this policy).',
               <>
-                Access your data and get a copy in a common format — use <A to="/account#your-data">Download my data</A> in your account.
+                Access your data and get a copy in a common format — use <A to="/account/privacy">Download my data</A> in your account.
               </>,
               'Correct inaccurate data — edit your profile and addresses, or ask us.',
               'Object to processing, and ask us to suspend, withdraw, block or delete your data.',
               <>
-                Delete your account — use <A to="/account#your-data">Request account deletion</A>.
+                Delete your account — use <A to="/account/privacy">Delete my account</A>.
               </>,
               'Be compensated for damages caused by inaccurate, unlawfully obtained or unauthorized use of your data.',
               <>

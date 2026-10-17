@@ -25,6 +25,7 @@ export {
   ClockIcon as Clock,
   CompassIcon as Compass,
   CopyIcon as Copy,
+  DownloadSimpleIcon as Download,
   CreditCardIcon as CreditCard,
   EnvelopeSimpleIcon as MailCheck,
   EyeIcon as Eye,
