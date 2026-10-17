@@ -1,0 +1,5 @@
+# Keep each build script runnable on its own platform.
+*.bat text eol=crlf
+gradlew text eol=lf
+*.jar binary
+*.apk binary
