@@ -12,3 +12,6 @@ supabase/.branches
 
 # Local credentials file — never commit
 supabase-keys.txt
+
+# Generated preview pages for graphics (rebuilt by graphics/_source/render.mjs)
+graphics/_source/pages/
