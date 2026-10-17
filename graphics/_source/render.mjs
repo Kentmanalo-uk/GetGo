@@ -8,7 +8,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as Icons from '@phosphor-icons/react';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -34,7 +34,28 @@ const icon = (name, cls = 'grad') => `<span class="ic ${cls}">${renderToStaticMa
 
 const logo = (size, variant = '') => `<span class="logo ${variant}" style="font-size:${size}px">GET<span class="amp">&amp;</span><span class="go">GO</span></span>`;
 
-const G_MARK = '<path d="M41.5 23.5a12 12 0 1 0 2.4 12.9H33v-6h17.2c.5 9.8-7.3 18.6-18.2 18.6a18 18 0 1 1 13.9-29.5z" fill="#ff4f9a"/>';
+/**
+ * The GETGO mark: a forward-leaning ampersand (the "&" in GET & GO) with two
+ * speed lines trailing behind it, the rider motif. Drawn on a 1024 grid.
+ *   tile:  'rounded' (app icon), 'square' (full bleed) or null (glyph only)
+ *   glyph: 'white', 'pink' (gradient) or 'ink'
+ *   bg:    'pink' (gradient), 'ink' or 'white' (when there is a tile)
+ *   scale: glyph size inside the square (for maskable and circle crops)
+ */
+const AMP = 'M 690 780 L 420 510 C 347 437 365 270 468 270 C 563 270 585 375 517 435 L 388 548 C 294 630 332 792 462 792 C 560 792 620 720 680 640';
+const LINES = 'M 150 520 H 285 M 178 662 H 262';
+const mark = ({ tile = 'rounded', glyph = 'white', scale = 1, bg = 'pink' } = {}) => {
+  const fill = bg === 'pink' ? 'url(#getgo-g)' : bg === 'ink' ? C.ink : '#fff';
+  const stroke = glyph === 'white' ? '#fff' : glyph === 'ink' ? C.ink : 'url(#getgo-g)';
+  const rect = tile ? `<rect width="1024" height="1024" ${tile === 'rounded' ? 'rx="230" ' : ''}fill="${fill}"/>` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
+<defs><linearGradient id="getgo-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1024" y2="1024"><stop offset="0" stop-color="#ff6aa9"/><stop offset=".55" stop-color="#ff3d8f"/><stop offset="1" stop-color="#d81b6a"/></linearGradient></defs>
+${rect}
+<g fill="none" stroke="${stroke}" stroke-linecap="round" stroke-linejoin="round" transform="translate(512 512) scale(${scale}) translate(-512 -512) translate(28 -30)">
+<path stroke-width="100" transform="translate(130 0) skewX(-9)" d="${AMP}"/>
+<path stroke-width="68" d="${LINES}"/>
+</g></svg>`;
+};
 
 const base = (w, h) => `
 @font-face {
@@ -102,15 +123,29 @@ const DESIGNS = [
     body: `<div style="height:100%;display:grid;place-items:center">${logo(500, 'inv')}</div>` },
   { out: 'logo/getgo-logo-on-pink.png', w: 2400, h: 1260, bg: C.fill,
     body: `<div style="height:100%;display:grid;place-items:center">${logo(500, 'onpink')}</div>` },
-  { out: 'logo/getgo-icon-1024.png', w: 1024, h: 1024, transparent: true,
-    body: `<svg viewBox="0 0 64 64" width="1024" height="1024"><rect width="64" height="64" rx="14" fill="${C.ink}"/>${G_MARK}</svg>` },
-  { out: 'logo/getgo-icon-square-1024.png', w: 1024, h: 1024, bg: C.ink,
-    body: `<svg viewBox="0 0 64 64" width="1024" height="1024"><rect width="64" height="64" fill="${C.ink}"/><g transform="translate(32 32) scale(.82) translate(-32 -32)">${G_MARK}</g></svg>` },
-  { out: 'logo/profile-picture-icon-1080.png', w: 1080, h: 1080, bg: C.ink,
-    body: `<svg viewBox="0 0 64 64" width="1080" height="1080"><rect width="64" height="64" fill="${C.ink}"/><g transform="translate(32 32) scale(.62) translate(-32 -32)">${G_MARK}</g></svg>` },
+  // The mark (primary symbol).
+  { out: 'logo/getgo-mark-1024.png', w: 1024, h: 1024, transparent: true, body: mark() },
+  { out: 'logo/getgo-mark-square-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', scale: 0.86 }) },
+  { out: 'logo/getgo-mark-pink-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'pink' }) },
+  { out: 'logo/getgo-mark-white-1024.png', w: 1024, h: 1024, transparent: true, body: mark({ tile: null, glyph: 'white' }) },
+  { out: 'logo/getgo-mark-on-dark-1024.png', w: 1024, h: 1024, body: mark({ tile: 'square', bg: 'ink', glyph: 'pink', scale: 0.86 }) },
+  // Primary logo: the mark with the wordmark.
+  { out: 'logo/getgo-lockup.png', w: 2600, h: 900, transparent: true,
+    body: `<div style="height:100%;display:flex;align-items:center;justify-content:center;gap:110px"><div style="width:560px;height:560px">${mark()}</div>${logo(400)}</div>` },
+  { out: 'logo/getgo-lockup-white.png', w: 2600, h: 900, transparent: true,
+    body: `<div style="height:100%;display:flex;align-items:center;justify-content:center;gap:110px"><div style="width:560px;height:560px">${mark()}</div>${logo(400, 'inv')}</div>` },
+  // Profile photos (circle-safe).
+  { out: 'logo/profile-picture-1080.png', w: 1080, h: 1080, body: mark({ tile: 'square', scale: 0.74 }) },
+  { out: 'logo/profile-picture-dark-1080.png', w: 1080, h: 1080, body: mark({ tile: 'square', bg: 'ink', glyph: 'pink', scale: 0.74 }) },
   { out: 'logo/profile-picture-wordmark-1080.png', w: 1080, h: 1080,
     css: `body{background:radial-gradient(circle at 50% 40%, ${C.soft}, #fff 70%)}`,
     body: `<div style="height:100%;display:grid;place-items:center">${logo(190)}</div>` },
+
+  // ----- App icons (written into the web app's public/ folder) -----
+  { out: '../public/pwa-192.png', w: 192, h: 192, transparent: true, body: mark() },
+  { out: '../public/pwa-512.png', w: 512, h: 512, transparent: true, body: mark() },
+  { out: '../public/maskable-512.png', w: 512, h: 512, body: mark({ tile: 'square', scale: 0.72 }) },
+  { out: '../public/apple-touch-icon.png', w: 180, h: 180, body: mark({ tile: 'square', scale: 0.86 }) },
 
   // ----- Covers -----------------------------------------------------------
   // Facebook page cover. Key content stays in the centre so phone crops keep it.
@@ -336,6 +371,9 @@ for (const d of DESIGNS) {
 }
 await browser.close();
 
-// The vector icon mark, as used for the app icon.
-copyFileSync(join(root, '..', 'public', 'favicon.svg'), join(root, 'logo', 'getgo-icon.svg'));
-console.log('✓ logo/getgo-icon.svg');
+// Vector files, and the same mark as the web app's favicon.
+writeFileSync(join(root, 'logo', 'getgo-mark.svg'), mark());
+writeFileSync(join(root, 'logo', 'getgo-mark-pink.svg'), mark({ tile: null, glyph: 'pink' }));
+writeFileSync(join(root, 'logo', 'getgo-mark-white.svg'), mark({ tile: null, glyph: 'white' }));
+writeFileSync(join(root, '..', 'public', 'favicon.svg'), mark());
+console.log('✓ logo/getgo-mark*.svg and public/favicon.svg');

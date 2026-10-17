@@ -17,15 +17,24 @@ Brand graphics for launching and promoting GETGO on social media. Every image is
 
 ## `logo/`
 
+**The mark** is a forward-leaning ampersand, the "&" in GET & GO, with two speed lines behind it (the rider motif): getting things and going. Use it wherever the full name won't fit, such as the app icon, profile photos and favicons. The **GET&GO wordmark** is the secondary logo. The **lockup** (mark plus wordmark) is the primary logo where there's room.
+
 | File | Use |
 |---|---|
-| `getgo-logo.png` | Wordmark, transparent, for light backgrounds |
-| `getgo-logo-white.png` | Wordmark, transparent, for dark or photo backgrounds |
-| `getgo-logo-on-white.png`, `-on-dark.png`, `-on-pink.png` | Wordmark on a solid background (2400×1260, also a good link preview) |
-| `getgo-icon.svg`, `getgo-icon-1024.png` | App icon (rounded tile) |
-| `getgo-icon-square-1024.png` | App icon, full square (stores and platforms that round it themselves) |
-| `profile-picture-icon-1080.png` | Facebook, Instagram, TikTok and X profile photo (circle-safe) |
-| `profile-picture-wordmark-1080.png` | Alternative profile photo with the full wordmark |
+| `getgo-lockup.png`, `getgo-lockup-white.png` | Primary logo (mark + wordmark), for light / dark backgrounds |
+| `getgo-mark.svg`, `getgo-mark-1024.png` | The mark on its pink tile: app icon, favicon |
+| `getgo-mark-square-1024.png` | Full-bleed square, for platforms that round icons themselves |
+| `getgo-mark-pink.svg` / `getgo-mark-pink-1024.png` | The mark alone in pink, for white backgrounds |
+| `getgo-mark-white.svg` / `getgo-mark-white-1024.png` | The mark alone in white, for pink, dark or photo backgrounds |
+| `getgo-mark-on-dark-1024.png` | Pink mark on ink |
+| `profile-picture-1080.png` | **Profile photo** for Facebook, Instagram, TikTok and X (circle-safe) |
+| `profile-picture-dark-1080.png` | Alternative dark profile photo |
+| `profile-picture-wordmark-1080.png` | Profile photo with the GET&GO wordmark |
+| `getgo-logo*.png` | GET&GO wordmark (secondary logo) on transparent, white, dark and pink |
+
+Keep clear space around the mark of at least the height of its speed lines. Don't stretch, rotate or recolor it outside the brand pinks, ink and white.
+
+The app's favicon and install icons (`public/favicon.svg`, `pwa-*.png`, `maskable-512.png`, `apple-touch-icon.png`) are generated from the same mark by the render script.
 
 ## `cover/`
 
