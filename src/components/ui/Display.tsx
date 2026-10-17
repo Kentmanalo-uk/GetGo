@@ -134,7 +134,7 @@ export function Tabs<T extends string>({
           >
             {item.label}
             {item.count != null && item.count > 0 && (
-              <span className={cx('tabular rounded px-1.5 text-micro', active ? 'bg-accent text-ink' : 'bg-canvas text-ink-2')}>{item.count}</span>
+              <span className={cx('tabular rounded px-1.5 text-micro', active ? 'bg-accent-fill text-white' : 'bg-canvas text-ink-2')}>{item.count}</span>
             )}
           </button>
         );

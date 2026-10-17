@@ -52,12 +52,12 @@ const FAQ = [
     a: 'Listing and managing your store on GETGO is free, with no commission. Customers pay the delivery and service fees to their rider, shown to them before ordering.',
   },
   {
-    q: 'Does this make my store a GETGO partner?',
-    a: 'No. A listing doesn’t create a partnership, agency, franchise or exclusivity, and GETGO doesn’t sell on your behalf. You can stop managing your listing or ask us to remove it at any time.',
+    q: 'What does being a GETGO Partner mean?',
+    a: 'You manage your store’s listing on GETGO for free, and customers see your store marked as a GETGO Partner. “Partner” is the name of our store program — it isn’t a legal partnership, agency, franchise or exclusive deal, and GETGO doesn’t sell on your behalf. You can leave at any time.',
   },
   {
     q: 'My store is already on GETGO, but I never signed up.',
-    a: 'Some stores are listed from their public menus so customers can ask a rider to buy there, and are marked as independent. You can manage, correct or remove the listing — see Store listings under Legal.',
+    a: 'Some stores are listed from their public menus so customers can ask a rider to buy there, and are marked as independent. You can claim the listing and become a GETGO Partner, correct it, or have it removed — see Store listings under Legal.',
   },
   {
     q: 'What if an item runs out?',
@@ -113,7 +113,7 @@ export default function PartnerLandingPage() {
       <section className="bg-ink text-white">
         <div className="page-x mx-auto grid max-w-7xl gap-12 py-12 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-20">
           <div className="space-y-6">
-            <p className="text-small font-semibold text-accent">GETGO for stores</p>
+            <p className="text-small font-semibold text-accent">GETGO Partner</p>
             <h1 className="text-[2rem] leading-[1.1] font-extrabold tracking-tight sm:text-[2.75rem] lg:text-[3.25rem]">List your store. Our riders do the buying.</h1>
             <p className="max-w-lg text-heading text-white/75">
               Customers nearby order from your product list. A GETGO rider comes to your counter and pays for the items like any customer — no order screen, no
@@ -121,10 +121,10 @@ export default function PartnerLandingPage() {
             </p>
             <div className="flex flex-wrap gap-3">
               <ButtonLink to={isPartner ? '/merchant' : '/partner/apply'} size="lg">
-                {isPartner ? 'Open your product list' : 'List your store'}
+                {isPartner ? 'Open your product list' : 'Become a partner'}
               </ButtonLink>
               <ButtonLink to="/merchant" size="lg" variant="secondary" className="border-white/25 bg-transparent text-white hover:bg-white/10">
-                Store login
+                Partner login
               </ButtonLink>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function PartnerLandingPage() {
               </ul>
             </div>
             <div>
-              <p className="mb-2 font-semibold">What we ask of stores that manage a listing</p>
+              <p className="mb-2 font-semibold">What we ask of partners</p>
               <ul className="space-y-1.5 text-ink-2">
                 {EXPECTATIONS.map((e) => (
                   <li key={e}>{e}</li>
@@ -235,14 +235,14 @@ export default function PartnerLandingPage() {
               <Clock className="size-4" aria-hidden /> You can save your application and finish it later.
             </p>
             <p className="text-small text-ink-3">
-              Listing is optional and isn’t a partnership. Read the{' '}
+              Joining is free and optional. Read the{' '}
               <Link to="/legal/stores" className="font-semibold text-ink underline underline-offset-4">
                 Store Listing Terms
               </Link>
               .
             </p>
             {(supportEmail || supportPhone) && (
-              <p className="text-small text-ink-3">Questions? Contact store support at {[supportEmail, supportPhone].filter(Boolean).join(' or ')}.</p>
+              <p className="text-small text-ink-3">Questions? Contact partner support at {[supportEmail, supportPhone].filter(Boolean).join(' or ')}.</p>
             )}
           </div>
           <ButtonLink to={isPartner ? '/merchant' : '/partner/apply'} size="lg" className="self-start sm:self-auto">

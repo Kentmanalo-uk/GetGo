@@ -141,13 +141,13 @@ export function RiderLayout() {
               <NavLink key={to} to={to} end={end} className={sideLink}>
                 <Icon className="size-4" aria-hidden />
                 <span className="flex-1">{label}</span>
-                {badge ? <span className="tabular rounded-full bg-accent px-1.5 text-micro text-ink">{badge}</span> : null}
+                {badge ? <span className="tabular rounded-full bg-accent-fill px-1.5 text-micro text-white">{badge}</span> : null}
               </NavLink>
             ))}
             <NavLink to="/rider/notifications" className={sideLink}>
               <Bell className="size-4" aria-hidden />
               <span className="flex-1">Notifications</span>
-              {unread > 0 && <span className="tabular rounded-full bg-accent px-1.5 text-micro text-ink">{unread}</span>}
+              {unread > 0 && <span className="tabular rounded-full bg-accent-fill px-1.5 text-micro text-white">{unread}</span>}
             </NavLink>
           </nav>
           <div className="space-y-0.5 border-t border-line pt-4">
@@ -195,7 +195,7 @@ export function RiderLayout() {
                       <span className="relative">
                         <Icon className={cx('size-6', isActive ? ICON_GRADIENT : 'text-ink-4')} weight="fill" aria-hidden />
                         {badge ? (
-                          <span className="tabular absolute -top-1.5 -right-2.5 min-w-4 rounded bg-accent px-1 text-center text-[10px] leading-4 text-ink">{badge}</span>
+                          <span className="tabular absolute -top-1.5 -right-2.5 min-w-4 rounded bg-accent-fill px-1 text-center text-[10px] leading-4 text-white">{badge}</span>
                         ) : null}
                       </span>
                       {label}

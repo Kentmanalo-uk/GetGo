@@ -67,6 +67,8 @@ export interface Address {
 
 export interface Storefront {
   id: string;
+  /** The owner joined GETGO Partner and manages this listing; otherwise it's an independent listing. */
+  is_partner: boolean;
   slug: string;
   name: string;
   category: MerchantCategory;

@@ -176,7 +176,7 @@ export function AccountPage() {
         </EmptyState>
         <RecentlyViewed />
         <ul className="divide-y divide-line border-t border-line">
-          <MenuLink to="/partner" icon={Store} label="List your store" detail="Free and optional" />
+          <MenuLink to="/partner" icon={Store} label="Partner with GETGO" detail="Free and optional for stores" />
           <MenuLink to="/legal" icon={FileText} label="Terms and privacy" />
         </ul>
       </div>
@@ -225,9 +225,9 @@ export function AccountPage() {
       <h2 className="mt-8 mb-1 text-small font-semibold text-ink-3">GETGO for work</h2>
       <ul className="divide-y divide-line border-y border-line">
         {auth.memberships.length > 0 ? (
-          <MenuLink to="/merchant" icon={Store} label="Store dashboard" detail={auth.memberships.map((m) => m.merchant.name).join(', ')} />
+          <MenuLink to="/merchant" icon={Store} label="Partner dashboard" detail={auth.memberships.map((m) => m.merchant.name).join(', ')} />
         ) : (
-          <MenuLink to="/partner" icon={Store} label="List your store" detail="Free and optional — not a partnership" />
+          <MenuLink to="/partner" icon={Store} label="Partner with GETGO" detail="Free and optional for stores" />
         )}
         {auth.hasRole('rider') ? (
           <MenuLink to="/rider" icon={Bike} label="Rider deliveries" />

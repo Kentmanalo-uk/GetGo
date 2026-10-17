@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from 'vitest';
 import { TestDb } from './harness';
-import { createPlatform, type World } from './fixtures';
+import { createPlatform, createStore, type World } from './fixtures';
 
 const HOURS = [1, 2, 3, 4, 5].map((weekday) => ({ weekday, opens: '08:00', closes: '20:00' }));
 
@@ -103,5 +103,23 @@ describe('stores created and managed by admins', () => {
     expect((await db.expectError(world.support, `select save_product($1, '{"name":"X","base_price_minor":1}')`, [merchantId])).code).toBe('42501');
     expect((await db.expectError(someone, `select set_product_availability($1, true)`, [productId])).code).toBe('42501');
     expect(await db.as(someone, `update merchants set description = 'x' where id = $1 returning id`, [merchantId])).toHaveLength(0);
+  });
+});
+
+describe('partner stores', () => {
+  test('stores are partners only once an owner manages them', async () => {
+    const db = await TestDb.create();
+    const world = await createPlatform(db);
+    const partner = await createStore(db, world, 'partner-owner@example.test');
+    const [{ r }] = await db.as<{ r: { merchant_id: string } }>(world.admin, `select admin_create_store('later@example.test', $1) as r`, [
+      JSON.stringify({ name: 'Listed Only Eatery', category: 'restaurant', address_line: '1 Rizal St', barangay: 'Dinaga', city: 'Naga City', service_area_id: world.areaId }),
+    ]);
+    await db.sql(`update merchants set is_published = true where id = $1`, [r.merchant_id]); // skip catalog setup
+    const rows = await db.as<{ id: string; is_partner: boolean }>('anon', `select id, is_partner from storefronts where id in ($1, $2)`, [partner.merchantId, r.merchant_id]);
+    expect(Object.fromEntries(rows.map((x) => [x.id, x.is_partner]))).toEqual({ [partner.merchantId]: true, [r.merchant_id]: false });
+    // When the owner signs up, the listing becomes theirs and a partner store.
+    await db.createUser('later@example.test');
+    const [after] = await db.as<{ is_partner: boolean }>('anon', `select is_partner from storefronts where id = $1`, [r.merchant_id]);
+    expect(after.is_partner).toBe(true);
   });
 });

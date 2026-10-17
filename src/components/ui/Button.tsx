@@ -11,7 +11,7 @@ const base =
   'disabled:cursor-not-allowed disabled:opacity-45 aria-disabled:cursor-not-allowed aria-disabled:opacity-45';
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-ink hover:bg-accent-strong active:bg-accent-strong',
+  primary: 'bg-accent-fill text-white hover:bg-accent-fill-hover active:bg-accent-fill-hover',
   dark: 'bg-ink text-white hover:bg-ink-2',
   secondary: 'border border-line-strong bg-surface text-ink hover:bg-canvas',
   ghost: 'text-ink hover:bg-canvas',

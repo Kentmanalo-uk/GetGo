@@ -115,12 +115,12 @@ function SettingsForm({ settings, canEdit }: { settings: AdminPlatformSettings; 
       </fieldset>
 
       <fieldset disabled={!canEdit} className="space-y-4">
-        <SectionHeading title="Store listing note" />
+        <SectionHeading title="Partner note" />
         <Field
-          label="Note for store owners"
+          label="Note for prospective partners"
           optional
           error={errors.partner_fee_note?.message}
-          hint="Shown on the “For stores” page. Describe any fees or terms plainly; leave blank if there are none to state."
+          hint="Shown on the “Partner with GETGO” page. Describe any fees or terms plainly; leave blank if there are none to state."
         >
           {(p) => <Textarea {...p} rows={5} maxLength={2000} {...form.register('partner_fee_note')} />}
         </Field>

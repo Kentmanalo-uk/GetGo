@@ -191,9 +191,9 @@ export function TermsPage() {
                 an independent business.
               </>,
               <>
-                <strong>Store listings are not partnerships.</strong> Unless a listing says it’s managed by the store, the store has no agreement with
-                GETGO and does not endorse or sponsor GETGO. Store names and logos are shown only to identify where your rider will buy. See{' '}
-                <A to="/legal/stores">Store listings</A>.
+                <strong>Partner stores and independent stores.</strong> Stores marked “GETGO Partner” joined our free store program and manage their
+                own listing. Every other store is independent: it has no agreement with GETGO and does not endorse or sponsor GETGO. Store names and
+                logos are shown only to identify where your rider will buy. See <A to="/legal/stores">Store listings</A>.
               </>,
               <>
                 <strong>Listed prices are a guide.</strong> They come from the store’s public menu or the store itself and may be out of date. See
@@ -436,7 +436,7 @@ export function TermsPage() {
       sections={sections}
       summary={
         <>
-          <p>GETGO connects you with local riders who buy, pick up or deliver for you. Stores listed are independent and aren’t GETGO partners.</p>
+          <p>GETGO connects you with local riders who buy, pick up or deliver for you. Stores not marked as GETGO Partners are independent.</p>
           <p>You pay your rider directly by GCash, only after a rider accepts and only to the account shown in the app.</p>
           <p>Prices can change at the store; your rider checks with you first. Unused money comes back to you.</p>
         </>
@@ -745,11 +745,12 @@ export function StoreListingsPage() {
         <>
           <P>
             GETGO lists stores in your town so you can tell a rider what to buy for you. A listing is information — the store’s name, location, hours
-            and items with reference prices — not an offer from the store and not a sign of partnership.
+            and items with reference prices — not an offer from the store.
           </P>
           <UL
             items={[
-              'Unless a listing says it is managed by the store, the store has no agreement with GETGO and has not endorsed, sponsored or authorized GETGO.',
+              'Stores marked “GETGO Partner” joined GETGO Partner, our free store program, and manage their own listing. “Partner” is a program name: it is not a legal partnership, joint venture, agency or franchise.',
+              'Every other store is independent: it has no agreement with GETGO and has not endorsed, sponsored or authorized GETGO.',
               'GETGO does not sell on the store’s behalf, is not the store’s agent or reseller, and takes no commission from stores.',
               'Riders buy at the store as ordinary walk-in customers and pay the store’s counter price.',
               'Store names, logos and photos belong to their owners and are used only to identify the store.',
@@ -783,8 +784,8 @@ export function StoreListingsPage() {
                 <strong>Correct</strong> its details, items or prices.
               </>,
               <>
-                <strong>Manage</strong> the listing yourself — update items, prices, availability and hours. Managing a listing is free, has no minimum
-                and no exclusivity, and doesn’t require you to accept orders: riders still buy at your counter like any customer.
+                <strong>Become a GETGO Partner</strong> and manage the listing yourself — update items, prices, availability and hours. It’s free, has
+                no minimum and no exclusivity, and doesn’t require you to accept orders: riders still buy at your counter like any customer.
               </>,
             ]}
           />
@@ -814,7 +815,7 @@ export function StoreListingsPage() {
       sections={sections}
       summary={
         <>
-          <p>Stores on GETGO are independent. A listing helps customers tell riders what to buy — it isn’t a partnership or endorsement.</p>
+          <p>Stores marked “GETGO Partner” joined our free program and manage their listing. All other stores are independent and not affiliated with GETGO.</p>
           <p>Store owners can remove, correct or manage their listing at any time, for free.</p>
         </>
       }

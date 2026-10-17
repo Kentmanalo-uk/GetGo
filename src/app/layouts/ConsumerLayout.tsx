@@ -92,7 +92,7 @@ function DesktopHeader() {
             Explore
           </NavLink>
           <NavLink to="/partner" className={navClass}>
-            For stores
+            Partner with GETGO
           </NavLink>
           {status === 'signed_in' ? (
             <>
@@ -105,7 +105,7 @@ function DesktopHeader() {
               </NavLink>
               <NavLink to="/cart" className="relative flex items-center gap-2 text-small font-semibold" aria-label={`Cart, ${cartCount} items`}>
                 <ShoppingBag className="size-5" aria-hidden />
-                {cartCount > 0 && <span className="tabular rounded bg-accent px-1.5 text-micro">{cartCount}</span>}
+                {cartCount > 0 && <span className="tabular rounded bg-accent-fill px-1.5 text-micro text-white">{cartCount}</span>}
               </NavLink>
               <NavLink to="/account" className={(s) => cx(navClass(s), 'flex items-center gap-2')}>
                 <Avatar name={profile?.full_name} path={profile?.avatar_path} size="sm" />
@@ -178,7 +178,7 @@ function BottomNav() {
                     {/* Always filled: grey when inactive, pink gradient when active. */}
                     <Icon className={cx('size-6', isActive ? ICON_GRADIENT : 'text-ink-4')} weight="fill" aria-hidden />
                     {badge ? (
-                      <span className="tabular absolute -top-1.5 -right-2.5 min-w-4 rounded bg-accent px-1 text-center text-[10px] leading-4 text-ink">
+                      <span className="tabular absolute -top-1.5 -right-2.5 min-w-4 rounded bg-accent-fill px-1 text-center text-[10px] leading-4 text-white">
                         {badge}
                       </span>
                     ) : null}
@@ -202,16 +202,16 @@ export function SiteFooter() {
           <Logo />
           <p className="max-w-xs text-small text-ink-3">Local riders who buy, pick up and deliver for you.</p>
           <p className="max-w-xs text-micro text-ink-4">
-            Stores shown on GETGO are independent businesses and are not affiliated with GETGO unless stated. Store names and logos belong to their owners.
+            Stores not marked as GETGO Partners are independent and not affiliated with GETGO. Store names and logos belong to their owners.
           </p>
         </div>
         <nav aria-label="For businesses" className="space-y-2 text-small">
           <p className="font-semibold">For businesses</p>
           <Link to="/partner" className="block text-ink-2 hover:text-ink">
-            List or manage your store
+            Partner with GETGO
           </Link>
           <Link to="/merchant" className="block text-ink-2 hover:text-ink">
-            Store login
+            Partner login
           </Link>
           <Link to="/rider/sign-up" className="block text-ink-2 hover:text-ink">
             Deliver with GETGO

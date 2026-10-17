@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
-import { Clock, Info, MapPin, Search, Star } from '@/components/icons';
+import { BadgeCheck, Clock, Info, MapPin, Search, Star } from '@/components/icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useLocationContext } from '@/features/location/LocationProvider';
 import { Sheet } from '@/components/ui/Sheet';
@@ -163,7 +163,7 @@ function MobileCartBar({ store }: { store: Storefront }) {
     <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 px-4 pb-3 lg:hidden">
       <Link
         to={`/checkout/${store.id}`}
-        className="flex h-13 items-center justify-between rounded-control bg-accent px-4 font-semibold text-ink shadow-pop"
+        className="flex h-13 items-center justify-between rounded-control bg-accent-fill px-4 font-semibold text-white shadow-pop"
       >
         <span className="tabular">
           {cart.item_count} {cart.item_count === 1 ? 'item' : 'items'}
@@ -243,6 +243,11 @@ export default function StorePage() {
           />
           <div className={cx('min-w-0 flex-1', s.cover_path && 'pt-3')}>
             <h1 className="text-title font-bold lg:text-display">{s.name}</h1>
+            {s.is_partner && (
+              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-micro font-semibold text-accent-ink">
+                <BadgeCheck className="size-3.5" weight="fill" aria-hidden /> GETGO Partner
+              </span>
+            )}
             <StoreMeta store={s} className="mt-1" />
             <button type="button" onClick={() => setInfoOpen(true)} className="mt-2 inline-flex items-center gap-1.5 text-small font-semibold underline underline-offset-4">
               <Info className="size-4" aria-hidden /> Hours, address and fees
@@ -324,16 +329,26 @@ export default function StorePage() {
             </div>
 
             <aside aria-label="About this listing" className="mt-10 rounded-media bg-canvas p-4 text-small text-ink-3">
-              <p>
-                <span className="font-semibold text-ink-2">{s.name}</span> is an independent store and is not affiliated with, sponsored by or partnered
-                with GETGO. A GETGO rider buys your items at the store’s counter for you. Prices come from the store’s listing and may change.
-              </p>
-              <Link
-                to={`/legal/stores?store=${encodeURIComponent(s.name)}#owners`}
-                className="mt-2 inline-block font-semibold text-ink underline underline-offset-4"
-              >
-                Is this your store? Manage or remove this listing
-              </Link>
+              {s.is_partner ? (
+                <p>
+                  <span className="font-semibold text-ink-2">{s.name}</span> is a GETGO Partner and manages this listing. A GETGO rider buys your items at
+                  the store’s counter for you. Prices come from the store and may change.
+                </p>
+              ) : (
+                <>
+                  <p>
+                    <span className="font-semibold text-ink-2">{s.name}</span> is an independent store and is not affiliated with, sponsored by or
+                    partnered with GETGO. A GETGO rider buys your items at the store’s counter for you. Prices come from the store’s listing and may
+                    change.
+                  </p>
+                  <Link
+                    to={`/legal/stores?store=${encodeURIComponent(s.name)}#owners`}
+                    className="mt-2 inline-block font-semibold text-ink underline underline-offset-4"
+                  >
+                    Is this your store? Manage or remove this listing
+                  </Link>
+                </>
+              )}
             </aside>
           </div>
 

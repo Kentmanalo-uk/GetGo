@@ -37,7 +37,7 @@ function NoStore() {
   const a = app.data;
   return (
     <div className="page-x mx-auto max-w-xl space-y-4 py-16">
-      <Logo suffix="Stores" />
+      <Logo suffix="Partner" />
       <h1 className="text-title font-bold">{a && a.status !== 'rejected' ? 'Your application is in progress' : 'You don’t have a store on GETGO yet'}</h1>
       <p className="text-ink-2">
         {a && ['submitted', 'under_review'].includes(a.status)
@@ -158,7 +158,7 @@ export function MerchantLayout() {
       <div className="min-h-dvh lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line px-4 py-6 lg:flex">
           <Link to="/merchant" className="px-3">
-            <Logo suffix="Stores" />
+            <Logo suffix="Partner" />
           </Link>
           <div className="mt-8 px-3">
             <StoreSwitcher memberships={auth.memberships} current={membership} onChange={choose} />

@@ -518,7 +518,7 @@ function ReviewStep({ app, back, goTo }: StepProps & { goTo: (k: StepKey) => voi
             onChange={(e) => setConfirmed(e.target.checked)}
           />
           <LegalConsent documents={['terms', 'privacy', 'store_terms']} checked={agreed} onChange={setAgreed} />
-          <p className="pl-8 text-small text-ink-3">Listing your store on GETGO is optional and free, and doesn’t make your store a GETGO partner or agent.</p>
+          <p className="pl-8 text-small text-ink-3">Joining GETGO Partner is free and optional. “Partner” is our program name — it isn’t a legal partnership or agency.</p>
         </div>
       )}
       {submit.error && (
@@ -609,7 +609,7 @@ export default function ApplicationPage() {
 
   const a = app.data;
   const header = (
-    <PageHeader title="Store listing application" back="/partner">
+    <PageHeader title="Partner application" back="/partner">
       {a?.business_name ?? 'Tell us about your business'}
     </PageHeader>
   );
@@ -648,7 +648,7 @@ export default function ApplicationPage() {
   return (
     <div className="page-x mx-auto max-w-5xl pb-28 sm:pb-12">
       <div className="hidden py-4 lg:block">
-        <Logo suffix="Stores" />
+        <Logo suffix="Partner" />
       </div>
       {header}
       {a.status === 'needs_changes' && a.review_notes && (
