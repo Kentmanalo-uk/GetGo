@@ -1,6 +1,8 @@
-import { createBrowserRouter, Navigate, useRouteError, type RouteObject } from 'react-router';
+import { createBrowserRouter, Navigate, Outlet, useRouteError, type RouteObject } from 'react-router';
 import { ConsumerLayout, type RouteHandle } from './layouts/ConsumerLayout';
 import { RequireAuth, RequireRole } from '@/features/auth/guards';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { useVisitTracking } from '@/lib/visits';
 import { ForgotPasswordPage, ResetPasswordPage, SignInPage, SignUpPage } from '@/features/auth/AuthPages';
 import HomePage from '@/features/consumer/HomePage';
 import { ErrorState } from '@/components/ui/Feedback';
@@ -26,6 +28,13 @@ function RouteError() {
       </ButtonLink>
     </div>
   );
+}
+
+/** Every page: checks in for Admin → Visitors, then shows the page. */
+function SiteRoot() {
+  const { userId } = useAuth();
+  useVisitTracking(userId);
+  return <Outlet />;
 }
 
 function NotFound() {
@@ -96,6 +105,7 @@ const consumerRoutes: RouteObject[] = [
 
 export const router = createBrowserRouter([
   {
+    element: <SiteRoot />,
     errorElement: <RouteError />,
     children: [
       { path: 'sign-in', element: <SignInPage /> },
@@ -179,6 +189,7 @@ export const router = createBrowserRouter([
               { path: 'support', lazy: lazy(() => import('@/features/admin/SupportPage')) },
               { path: 'support/:ticketId', lazy: lazy(() => import('@/features/admin/SupportThreadPage')) },
               { path: 'users', lazy: lazy(() => import('@/features/admin/UsersPage')) },
+              { path: 'visitors', lazy: lazy(() => import('@/features/admin/VisitorsPage')) },
               { path: 'audit', lazy: lazy(() => import('@/features/admin/AuditPage')) },
               { path: 'settings', lazy: lazy(() => import('@/features/admin/SettingsPage')) },
             ],

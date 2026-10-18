@@ -495,8 +495,18 @@ export function PrivacyPage() {
               <strong>Support:</strong> messages you send us.
             </>,
             <>
+              <strong>Location:</strong> the map pins you place for addresses, stores and padala or errand stops, used to find the place and price
+              delivery by distance. Your phone’s location is read only when you tap “Use my location” to place a pin. We don’t track your location in
+              the background.
+            </>,
+            <>
+              <strong>Use of GETGO:</strong> while you have GETGO open, the page you’re on, your device type (such as “Android phone”), browser and
+              whether you use the website or the app, with the time, linked to your account when you’re signed in. We use it to see how many people are
+              using GETGO and to keep it running well. Visits are deleted after 30 days; your account keeps only when you were last active.
+            </>,
+            <>
               <strong>Technical:</strong> sign-in session data and preferences saved in your browser, and basic logs (such as IP address and time of
-              access) kept by our hosting providers for security. We don’t use advertising trackers, and we don’t collect your device’s GPS location.
+              access) kept by our hosting providers for security. We don’t use advertising trackers.
             </>,
           ]}
         />

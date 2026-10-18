@@ -5,6 +5,7 @@ import {
   Bike,
   ClipboardList,
   CreditCard,
+  Eye,
   FileText,
   LayoutGrid,
   LifeBuoy,
@@ -39,6 +40,7 @@ const STAFF: AppRole[] = ['admin', 'support', 'finance'];
 
 const MAIN_NAV: NavItem[] = [
   { to: '/admin', label: 'Overview', icon: LayoutGrid, roles: STAFF, end: true },
+  { to: '/admin/visitors', label: 'Visitors', icon: Eye, roles: ['admin', 'support'] },
   { to: '/admin/applications', label: 'Applications', icon: ClipboardList, roles: ['admin', 'support'], count: 'applications_waiting' },
   { to: '/admin/merchants', label: 'Merchants', icon: Store, roles: STAFF },
   { to: '/admin/orders', label: 'Orders', icon: Receipt, roles: STAFF, count: 'orders_waiting_for_rider' },

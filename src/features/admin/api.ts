@@ -1067,3 +1067,65 @@ export function useAuditLogs(entityType: string, enabled: boolean) {
     { enabled },
   );
 }
+
+// ---------------------------------------------------------------------------
+// Visitors
+// ---------------------------------------------------------------------------
+export type VisitorKind = 'Guest' | 'Customer' | 'Rider' | 'Store' | 'Staff' | 'Admin';
+export type VisitApp = 'browser' | 'installed' | 'android_app';
+
+export interface OnlineVisitor {
+  visitor_id: string;
+  user_id: string | null;
+  full_name: string | null;
+  email: string | null;
+  kind: VisitorKind;
+  path: string;
+  device: string | null;
+  browser: string | null;
+  app: VisitApp;
+  page_views: number;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
+export interface VisitorsSnapshot {
+  online_total: number;
+  online_signed_in: number;
+  online_guests: number;
+  today_visitors: number;
+  today_signed_in: number;
+  accounts_total: number;
+  online: OnlineVisitor[];
+}
+
+export interface AccountRow {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  created_at: string;
+  kind: Exclude<VisitorKind, 'Guest'>;
+  last_seen_at: string | null;
+  last_path: string | null;
+  last_device: string | null;
+  online: boolean;
+}
+
+/** Who's online now (checked in within 2 minutes) and today's numbers. Refreshes every 15 seconds. */
+export function useVisitors() {
+  return useQuery({
+    queryKey: ['admin', 'visitors'],
+    queryFn: async () => unwrap(await supabase.rpc('admin_visitors')) as VisitorsSnapshot,
+    refetchInterval: 15_000,
+  });
+}
+
+/** Every account, most recently active first. */
+export function useAccounts(search: string) {
+  return usePaged<AccountRow>(
+    ['admin', 'accounts', search],
+    async (from, to) => unwrap(await supabase.rpc('admin_accounts', { p_search: search || null, p_limit: to - from + 1, p_offset: from })) as AccountRow[],
+    { refetchInterval: 30_000 },
+  );
+}
